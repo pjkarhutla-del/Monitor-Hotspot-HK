@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <!-- Font Awesome untuk ikon bintang -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <!-- Turf.js untuk Analisis Spasial & Clipping Poligon Presisi -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
     <style>
         body, html {
@@ -51,7 +54,7 @@
             text-transform: uppercase;
         }
 
-        /* Posisikan tombol zoom tepat di bawah kotak judul */
+        /* Posisikan tombol zoom di bawah kotak judul */
         .leaflet-top.leaflet-left .leaflet-control-zoom {
             margin-top: 10px;
         }
@@ -86,7 +89,7 @@
         }
 
         /* -----------------------------------------------------------
-           STYLE LABEL TEKS NKWS (DYNAMIC SCREEN CENTER)
+           STYLE LABEL TEKS NKWS (STRICT IN-POLYGON DYNAMIC CENTER)
         ----------------------------------------------------------- */
         .kawasan-dynamic-label {
             background: transparent !important;
@@ -97,7 +100,7 @@
             text-align: center;
             white-space: normal !important;
             word-wrap: break-word;
-            width: 160px !important;
+            width: 120px !important;
             margin-left: -80px !important;
             line-height: 1.15;
             pointer-events: none;
@@ -120,7 +123,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // 1. Inisialisasi Peta & Basemap (Matikan zoomControl bawaan agar bisa diatur urutannya)
+        // 1. Inisialisasi Peta & Basemap
         const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap'
@@ -139,14 +142,13 @@
         const map = L.map('map', {
             center: [-2.548926, 118.014863],
             zoom: 5,
-            zoomControl: false, // Dimatikan sementara untuk menaruh judul di atasnya
+            zoomControl: false, 
             layers: [googleSatelit]
         });
 
         // -----------------------------------------------------------
-        // 2. MENAMPILKAN JUDUL PETA DAN TOMBOL ZOOM (URUTAN ATAS-BAWAH)
+        // 2. JUDUL PETA DAN TOMBOL ZOOM (POSISI KIRI ATAS)
         // -----------------------------------------------------------
-        // Tambahkan Judul Peta Pertama (Posisi Paling Atas Kiri)
         const titleControl = L.control({ position: 'topleft' });
         titleControl.onAdd = function (map) {
             const div = L.DomUtil.create('div', 'map-title-box');
@@ -158,7 +160,6 @@
         };
         titleControl.addTo(map);
 
-        // Tambahkan Tombol Zoom Setelah Judul Peta (Berada di bawah Judul)
         L.control.zoom({ position: 'topleft' }).addTo(map);
 
         // Layer Groups
@@ -167,7 +168,7 @@
         const labelKawasanGroup = L.layerGroup().addTo(map);
 
         // -----------------------------------------------------------
-        // 3. LOGIKA LABEL DINAMIS MENGIKUTI AREA SCREEN LAYAR
+        // 3. LOGIKA LABEL DINAMIS DENGAN TURF.JS (GARANSI DALAM POLYGON)
         // -----------------------------------------------------------
         const MIN_ZOOM_LABEL = 9;
         let kawasanFeatures = [];
@@ -179,43 +180,69 @@
             if (currentZoom < MIN_ZOOM_LABEL) return;
 
             const mapBounds = map.getBounds();
-            const fontSize = Math.max(10, 11 + (currentZoom - MIN_ZOOM_LABEL) * 1.6);
+            
+            // Konversi area layar saat ini menjadi Poligon Turf.js
+            const viewportBbox = [
+                mapBounds.getWest(),
+                mapBounds.getSouth(),
+                mapBounds.getEast(),
+                mapBounds.getNorth()
+            ];
+            const viewportPolygon = turf.bboxPolygon(viewportBbox);
+            
+            const fontSize = Math.max(8, 9 + (currentZoom - MIN_ZOOM_LABEL) * 1.1);
 
             kawasanFeatures.forEach(item => {
                 const layerBounds = item.layer.getBounds();
 
-                // Cek apakah polygon berpotongan/tampak di layar saat ini
+                // Cek cepat: Apakah poligon berada di area layar?
                 if (mapBounds.intersects(layerBounds)) {
-                    // Cari area perpotongan (Visible Bounds) antara Polygon dan Layar Peta
-                    const visibleSouth = Math.max(mapBounds.getSouth(), layerBounds.getSouth());
-                    const visibleNorth = Math.min(mapBounds.getNorth(), layerBounds.getNorth());
-                    const visibleWest = Math.max(mapBounds.getWest(), layerBounds.getWest());
-                    const visibleEast = Math.min(mapBounds.getEast(), layerBounds.getEast());
+                    try {
+                        // Potong (Intersect) poligon kawasan dengan area layar saat ini
+                        const intersection = turf.intersect(item.geoJsonFeature, viewportPolygon);
 
-                    // Titik tengah dari polygon yang HANYA SEDANG TAMPIL DI LAYAR
-                    const visibleCenterLat = (visibleSouth + visibleNorth) / 2;
-                    const visibleCenterLng = (visibleWest + visibleEast) / 2;
-                    const dynamicCenter = L.latLng(visibleCenterLat, visibleCenterLng);
+                        if (intersection) {
+                            // Cari titik tengah visual (dijamin SELALU DI DALAM poligon hasil potongan)
+                            const pointInside = turf.pointOnFeature(intersection);
+                            const labelCoords = pointInside.geometry.coordinates; // [lng, lat]
+                            const labelLatLng = L.latLng(labelCoords[1], labelCoords[0]);
 
-                    // Buat Marker Label pada titik tengah layar tersebut
-                    const labelIcon = L.divIcon({
-                        className: 'kawasan-dynamic-label',
-                        html: `<div style="font-size: ${fontSize}px;">${item.name}</div>`,
-                        iconSize: [0, 0],
-                        iconAnchor: [0, 0]
-                    });
+                            // Render marker label pada posisi valid tersebut
+                            const labelIcon = L.divIcon({
+                                className: 'kawasan-dynamic-label',
+                                html: `<div style="font-size: ${fontSize}px;">${item.name}</div>`,
+                                iconSize: [0, 0],
+                                iconAnchor: [0, 0]
+                            });
 
-                    const labelMarker = L.marker(dynamicCenter, { 
-                        icon: labelIcon, 
-                        interactive: false 
-                    });
-                    
-                    labelKawasanGroup.addLayer(labelMarker);
+                            const labelMarker = L.marker(labelLatLng, { 
+                                icon: labelIcon, 
+                                interactive: false 
+                            });
+                            
+                            labelKawasanGroup.addLayer(labelMarker);
+                        }
+                    } catch (e) {
+                        // Fallback jika geometri GeoJSON memiliki isu topologi minor
+                        const fallbackPoint = turf.pointOnFeature(item.geoJsonFeature);
+                        const coords = fallbackPoint.geometry.coordinates;
+                        const fallbackLatLng = L.latLng(coords[1], coords[0]);
+                        
+                        if (mapBounds.contains(fallbackLatLng)) {
+                            const labelIcon = L.divIcon({
+                                className: 'kawasan-dynamic-label',
+                                html: `<div style="font-size: ${fontSize}px;">${item.name}</div>`,
+                                iconSize: [0, 0],
+                                iconAnchor: [0, 0]
+                            });
+                            labelKawasanGroup.addLayer(L.marker(fallbackLatLng, { icon: labelIcon, interactive: false }));
+                        }
+                    }
                 }
             });
         }
 
-        // Jalankan fungsi saat peta digeser (drag/move) maupun di-zoom
+        // Jalankan pembaharuan label saat digeser atau di-zoom
         map.on('move zoom', renderDynamicLabels);
 
         // -----------------------------------------------------------
@@ -226,10 +253,10 @@
             .then(data => {
                 const layer = L.geoJSON(data, {
                     style: {
-                        color: "#8c38d1",       // Outline warna #6eeeff
+                        color: "#8c38d1",       // Outline warna
                         weight: 2,
                         opacity: 0.9,
-                        fillColor: "#8c38d1",   // Fill warna #6eeeff
+                        fillColor: "#8c38d1",   // Fill warna
                         fillOpacity: 0.05       // Opacity fill tipis
                     },
                     onEachFeature: function (feature, layer) {
@@ -243,7 +270,8 @@
                             if (feature.properties.NKWS) {
                                 kawasanFeatures.push({
                                     name: feature.properties.NKWS,
-                                    layer: layer
+                                    layer: layer,
+                                    geoJsonFeature: feature
                                 });
                             }
                         }
