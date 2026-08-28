@@ -7,10 +7,10 @@
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Font Awesome untuk ikon bintang -->
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
-    <!-- Turf.js untuk Analisis Spasial & Clipping Poligon Presisi -->
+    <!-- Turf.js untuk Analisis Spasial -->
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
     <style>
@@ -25,9 +25,7 @@
             height: 100vh;
         }
 
-        /* -----------------------------------------------------------
-           STYLE JUDUL PETA (PALING KIRI ATAS)
-        ----------------------------------------------------------- */
+        /* STYLE JUDUL PETA & WAKTU RUNNING */
         .map-title-box {
             background: rgba(255, 255, 255, 0.95);
             padding: 10px 14px;
@@ -53,13 +51,22 @@
             font-weight: 600;
             text-transform: uppercase;
         }
+        /* Style Tambahan untuk Keterangan Waktu */
+        .map-title-box .run-time {
+            margin-top: 5px;
+            padding-top: 4px;
+            border-top: 1px dashed #ccc;
+            font-size: 10.5px;
+            color: #d9534f;
+            font-weight: 700;
+            text-transform: none;
+        }
 
-        /* Posisikan tombol zoom di bawah kotak judul */
         .leaflet-top.leaflet-left .leaflet-control-zoom {
             margin-top: 10px;
         }
 
-        /* Legenda Peta (Kanan Bawah) */
+        /* Legenda Peta */
         .legend {
             background: rgba(255, 255, 255, 0.95);
             padding: 10px 15px;
@@ -81,16 +88,13 @@
             text-align: center;
         }
 
-        /* Style Ikon Bintang Merah Hotspot High */
         .star-icon {
             color: red;
             font-size: 18px;
             text-shadow: 0 0 3px #000;
         }
 
-        /* -----------------------------------------------------------
-           STYLE LABEL TEKS NKWS (STRICT IN-POLYGON DYNAMIC CENTER)
-        ----------------------------------------------------------- */
+        /* STYLE LABEL KAWASAN */
         .kawasan-dynamic-label {
             background: transparent !important;
             border: none !important;
@@ -101,11 +105,10 @@
             white-space: normal !important;
             word-wrap: break-word;
             width: 120px !important;
-            margin-left: -80px !important;
-            line-height: 1.15;
+            margin-left: -60px !important;
+            line-height: 1.1;
             pointer-events: none;
             
-            /* Text Buffer / Halo Putih Tebal */
             text-shadow: 
                 -1.5px -1.5px 0 #fff,  
                  1.5px -1.5px 0 #fff,
@@ -119,7 +122,6 @@
 
     <div id="map"></div>
 
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
@@ -147,7 +149,21 @@
         });
 
         // -----------------------------------------------------------
-        // 2. JUDUL PETA DAN TOMBOL ZOOM (POSISI KIRI ATAS)
+        // 2. FUNGSI UNTUK MENGAMBIL WAKTU REAL-TIME DILAKUKAN PROSES
+        // -----------------------------------------------------------
+        function getFormattedRunTime() {
+            const now = new Date();
+            const opsiTanggal = { day: '2-digit', month: 'long', year: 'numeric' };
+            const tanggal = now.toLocaleDateString('id-ID', opsiTanggal);
+            const jam = String(now.getHours()).padStart(2, '0');
+            const menit = String(now.getMinutes()).padStart(2, '0');
+            const detik = String(now.getSeconds()).padStart(2, '0');
+            
+            return `${tanggal} | ${jam}:${menit}:${detik} WIB`;
+        }
+
+        // -----------------------------------------------------------
+        // 3. JUDUL PETA DENGAN TANGGAL & JAM DIPROSES
         // -----------------------------------------------------------
         const titleControl = L.control({ position: 'topleft' });
         titleControl.onAdd = function (map) {
@@ -155,6 +171,7 @@
             div.innerHTML = `
                 <h3>HOTSPOT DALAM KSA, KPA, TB</h3>
                 <p>sumber data : SIPONGI</p>
+                <p class="run-time"><i class="fa-regular fa-clock"></i> Diproses: ${getFormattedRunTime()}</p>
             `;
             return div;
         };
@@ -168,7 +185,7 @@
         const labelKawasanGroup = L.layerGroup().addTo(map);
 
         // -----------------------------------------------------------
-        // 3. LOGIKA LABEL DINAMIS DENGAN TURF.JS (GARANSI DALAM POLYGON)
+        // 4. LOGIKA LABEL DINAMIS DENGAN TURF.JS
         // -----------------------------------------------------------
         const MIN_ZOOM_LABEL = 9;
         let kawasanFeatures = [];
@@ -180,8 +197,6 @@
             if (currentZoom < MIN_ZOOM_LABEL) return;
 
             const mapBounds = map.getBounds();
-            
-            // Konversi area layar saat ini menjadi Poligon Turf.js
             const viewportBbox = [
                 mapBounds.getWest(),
                 mapBounds.getSouth(),
@@ -195,19 +210,15 @@
             kawasanFeatures.forEach(item => {
                 const layerBounds = item.layer.getBounds();
 
-                // Cek cepat: Apakah poligon berada di area layar?
                 if (mapBounds.intersects(layerBounds)) {
                     try {
-                        // Potong (Intersect) poligon kawasan dengan area layar saat ini
                         const intersection = turf.intersect(item.geoJsonFeature, viewportPolygon);
 
                         if (intersection) {
-                            // Cari titik tengah visual (dijamin SELALU DI DALAM poligon hasil potongan)
                             const pointInside = turf.pointOnFeature(intersection);
-                            const labelCoords = pointInside.geometry.coordinates; // [lng, lat]
+                            const labelCoords = pointInside.geometry.coordinates;
                             const labelLatLng = L.latLng(labelCoords[1], labelCoords[0]);
 
-                            // Render marker label pada posisi valid tersebut
                             const labelIcon = L.divIcon({
                                 className: 'kawasan-dynamic-label',
                                 html: `<div style="font-size: ${fontSize}px;">${item.name}</div>`,
@@ -223,7 +234,6 @@
                             labelKawasanGroup.addLayer(labelMarker);
                         }
                     } catch (e) {
-                        // Fallback jika geometri GeoJSON memiliki isu topologi minor
                         const fallbackPoint = turf.pointOnFeature(item.geoJsonFeature);
                         const coords = fallbackPoint.geometry.coordinates;
                         const fallbackLatLng = L.latLng(coords[1], coords[0]);
@@ -242,22 +252,21 @@
             });
         }
 
-        // Jalankan pembaharuan label saat digeser atau di-zoom
         map.on('move zoom', renderDynamicLabels);
 
         // -----------------------------------------------------------
-        // 4. MEMUAT BATAS KAWASAN (kawasan.geojson)
+        // 5. MEMUAT BATAS KAWASAN (kawasan.geojson)
         // -----------------------------------------------------------
         fetch('kawasan.geojson')
             .then(response => response.json())
             .then(data => {
                 const layer = L.geoJSON(data, {
                     style: {
-                        color: "#8c38d1",       // Outline warna
+                        color: "#8c38d1",
                         weight: 2,
                         opacity: 0.9,
-                        fillColor: "#8c38d1",   // Fill warna
-                        fillOpacity: 0.05       // Opacity fill tipis
+                        fillColor: "#8c38d1",
+                        fillOpacity: 0.05
                     },
                     onEachFeature: function (feature, layer) {
                         if (feature.properties) {
@@ -283,7 +292,7 @@
             .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
 
         // -----------------------------------------------------------
-        // 5. MEMUAT DATA HOTSPOT DARI API SIPONGI
+        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI
         // -----------------------------------------------------------
         const apiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=24&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
 
@@ -302,13 +311,13 @@
                             const starIcon = L.divIcon({
                                 html: '<i class="fa-solid fa-star star-icon"></i>',
                                 className: '',
-                                iconSize: [20, 20],
+                                iconSize: [15, 15],
                                 iconAnchor: [10, 10]
                             });
                             return L.marker(latlng, { icon: starIcon });
                         } else if (conf === 'medium') {
                             return L.circleMarker(latlng, {
-                                radius: 6,
+                                radius: 4,
                                 fillColor: "#FFFF00",
                                 color: "#000",
                                 weight: 1,
@@ -336,7 +345,7 @@
             .catch(err => console.error("Gagal memuat API Hotspot:", err));
 
         // -----------------------------------------------------------
-        // 6. LEGENDA PETA (KANAN BAWAH)
+        // 7. LEGENDA PETA
         // -----------------------------------------------------------
         const legend = L.control({ position: 'bottomright' });
         legend.onAdd = function (map) {
@@ -352,7 +361,7 @@
         legend.addTo(map);
 
         // -----------------------------------------------------------
-        // 7. KONTROL LAYER BASEMAP & OVERLAY
+        // 8. KONTROL LAYER BASEMAP & OVERLAY
         // -----------------------------------------------------------
         const baseMaps = {
             "OpenStreetMap": osm,
