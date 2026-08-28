@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebGIS Hotspot & Batas Kawasan</title>
+    <title>HOTSPOT DALAM KSA, KPA, TB</title>
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -15,15 +15,45 @@
             margin: 0;
             padding: 0;
             height: 100%;
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         #map {
             width: 100%;
             height: 100vh;
         }
-        /* Legenda Peta */
+
+        /* -----------------------------------------------------------
+           STYLE JUDUL PETA (KIRI ATAS)
+        ----------------------------------------------------------- */
+        .map-title-box {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 16px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+            border-left: 5px solid #004d66;
+            margin-top: 10px !important;
+            margin-left: 10px !important;
+            max-width: 320px;
+        }
+        .map-title-box h3 {
+            margin: 0 0 4px 0;
+            font-size: 15px;
+            font-weight: 800;
+            color: #111;
+            letter-spacing: 0.5px;
+            line-height: 1.3;
+        }
+        .map-title-box p {
+            margin: 0;
+            font-size: 11px;
+            color: #555;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* Legenda Peta (Kanan Bawah) */
         .legend {
-            background: white;
+            background: rgba(255, 255, 255, 0.95);
             padding: 10px 15px;
             line-height: 24px;
             color: #333;
@@ -32,6 +62,7 @@
         }
         .legend h4 {
             margin: 0 0 5px 0;
+            font-size: 13px;
         }
         .legend i {
             width: 18px;
@@ -41,38 +72,38 @@
             opacity: 0.9;
             text-align: center;
         }
-        /* Style Ikon Bintang Merah */
+
+        /* Style Ikon Bintang Merah Hotspot High */
         .star-icon {
             color: red;
             font-size: 18px;
             text-shadow: 0 0 3px #000;
         }
 
-        /* Style Label Dinamis (NKWS) */
-        .kawasan-label-dynamic {
+        /* -----------------------------------------------------------
+           STYLE LABEL TEKS NKWS (DINAMIS & CENTER)
+        ----------------------------------------------------------- */
+        .kawasan-dynamic-label {
             background: transparent !important;
             border: none !important;
             box-shadow: none !important;
-            color: #004d66; /* Warna biru tua agar kontras dengan outline #6eeeff */
-            font-weight: bold;
+            color: #00334e;
+            font-weight: 800;
             text-align: center;
             white-space: normal !important;
             word-wrap: break-word;
-            max-width: 150px;
-            line-height: 1.2;
+            width: 160px !important;
+            margin-left: -80px !important; /* Offset setengah dari width agar tepat di tengah secara presisi */
+            line-height: 1.15;
             pointer-events: none;
             
-            /* Buffer / Text Halo Warna Putih */
+            /* Text Buffer / Halo Putih Tebal */
             text-shadow: 
-                -1px -1px 2px #fff,  
-                 1px -1px 2px #fff,
-                -1px  1px 2px #fff,
-                 1px  1px 2px #fff,
-                 0px  0px 4px #fff;
-        }
-        
-        .kawasan-label-dynamic::before {
-            display: none !important;
+                -1.5px -1.5px 0 #fff,  
+                 1.5px -1.5px 0 #fff,
+                -1.5px  1.5px 0 #fff,
+                 1.5px  1.5px 0 #fff,
+                 0px    0px 5px #fff;
         }
     </style>
 </head>
@@ -106,25 +137,80 @@
             layers: [osm]
         });
 
-        // Layer Group
+        // Layer Groups
         const hotspotLayer = L.layerGroup().addTo(map);
         const kawasanLayer = L.layerGroup().addTo(map);
+        const labelKawasanGroup = L.layerGroup().addTo(map); // Layer khusus label dinamis
 
-        // Ambang batas Zoom Minimum untuk Menampilkan Label Nama Kawasan
-        const MIN_ZOOM_LABEL = 10; 
-        let kawasanTooltips = [];
+        // -----------------------------------------------------------
+        // 2. KONTROL JUDUL PETA (KIRI ATAS)
+        // -----------------------------------------------------------
+        const titleControl = L.control({ position: 'topleft' });
+        titleControl.onAdd = function (map) {
+            const div = L.DomUtil.create('div', 'map-title-box');
+            div.innerHTML = `
+                <h3>HOTSPOT DALAM KSA, KPA, TB</h3>
+                <p>sumber data : SIPONGI</p>
+            `;
+            return div;
+        };
+        titleControl.addTo(map);
 
-        // 2. Memuat Batas Kawasan (kawasan.geojson) dengan warna baru
+        // -----------------------------------------------------------
+        // 3. LOGIKA LABEL TEKS NKWS DINAMIS
+        // -----------------------------------------------------------
+        const MIN_ZOOM_LABEL = 9; // Label mulai tampil pada zoom level 9 ke atas
+        let kawasanFeatures = []; // Menyimpan referensi geometri kawasan dan nama NKWS
+
+        // Fungsi memperbarui posisi & ukuran font label secara dinamis
+        function renderDynamicLabels() {
+            labelKawasanGroup.clearLayers();
+            const currentZoom = map.getZoom();
+
+            if (currentZoom < MIN_ZOOM_LABEL) return;
+
+            // Hitung ukuran font berdasarkan zoom level
+            const fontSize = Math.max(10, 11 + (currentZoom - MIN_ZOOM_LABEL) * 1.6);
+
+            kawasanFeatures.forEach(item => {
+                // Ambil titik tengah polygon (Center LatLng)
+                const centerLatLng = item.layer.getBounds().getCenter();
+
+                // Hanya render label jika titik tengah berada dalam tampilan viewport layar aktif
+                if (map.getBounds().contains(centerLatLng)) {
+                    const labelIcon = L.divIcon({
+                        className: 'kawasan-dynamic-label',
+                        html: `<div style="font-size: ${fontSize}px;">${item.name}</div>`,
+                        iconSize: [0, 0],
+                        iconAnchor: [0, 0]
+                    });
+
+                    const labelMarker = L.marker(centerLatLng, { 
+                        icon: labelIcon, 
+                        interactive: false 
+                    });
+                    
+                    labelKawasanGroup.addLayer(labelMarker);
+                }
+            });
+        }
+
+        // Event listener saat peta digeser atau di-zoom
+        map.on('moveend zoomend', renderDynamicLabels);
+
+        // -----------------------------------------------------------
+        // 4. MEMUAT BATAS KAWASAN (kawasan.geojson)
+        // -----------------------------------------------------------
         fetch('kawasan.geojson')
             .then(response => response.json())
             .then(data => {
                 const layer = L.geoJSON(data, {
                     style: {
-                        color: "#6eeeff",       // Outline warna #6eeeff
+                        color: "#8c38d1",       // Outline warna #6eeeff
                         weight: 2,
                         opacity: 0.9,
-                        fillColor: "#6eeeff",   // Fill warna #6eeeff
-                        fillOpacity: 0.05       // Opacity fill lebih tipis (5%)
+                        fillColor: "#8c38d1",   // Fill warna #6eeeff
+                        fillOpacity: 0.5       // Fill opacity sangat tipis
                     },
                     onEachFeature: function (feature, layer) {
                         // Popup Detail Kawasan
@@ -135,50 +221,26 @@
                             }
                             layer.bindPopup(popupText);
 
-                            // Label Dinamis NKWS
+                            // Simpan ke array untuk perhitungan label dinamis
                             if (feature.properties.NKWS) {
-                                layer.bindTooltip(feature.properties.NKWS, {
-                                    permanent: true,
-                                    direction: 'center',
-                                    className: 'kawasan-label-dynamic'
-                                });
-
-                                layer.on('add', function() {
-                                    const tooltip = layer.getTooltip();
-                                    if (tooltip) {
-                                        kawasanTooltips.push(tooltip);
-                                        updateLabelStyle();
-                                    }
+                                kawasanFeatures.push({
+                                    name: feature.properties.NKWS,
+                                    layer: layer
                                 });
                             }
                         }
                     }
                 });
                 kawasanLayer.addLayer(layer);
+                
+                // Render label pertama kali setelah data terload
+                renderDynamicLabels();
             })
             .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
 
-        // Pengaturan Ukuran Font dan Visibilitas Label berdasarkan Zoom
-        function updateLabelStyle() {
-            const currentZoom = map.getZoom();
-
-            kawasanTooltips.forEach(tooltip => {
-                const element = tooltip.getElement();
-                if (element) {
-                    if (currentZoom < MIN_ZOOM_LABEL) {
-                        element.style.display = 'none';
-                    } else {
-                        element.style.display = 'block';
-                        const fontSize = Math.max(10, 11 + (currentZoom - MIN_ZOOM_LABEL) * 1.5);
-                        element.style.fontSize = fontSize + 'px';
-                    }
-                }
-            });
-        }
-
-        map.on('zoomend', updateLabelStyle);
-
-        // 3. Memuat Data Hotspot dari API Sipongi
+        // -----------------------------------------------------------
+        // 5. MEMUAT DATA HOTSPOT DARI API SIPONGI
+        // -----------------------------------------------------------
         const apiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=24&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
 
         fetch(apiUrl)
@@ -229,7 +291,9 @@
             })
             .catch(err => console.error("Gagal memuat API Hotspot:", err));
 
-        // 4. Legenda Peta (Warna Kawasan Diperbarui)
+        // -----------------------------------------------------------
+        // 6. LEGENDA PETA (KANAN BAWAH)
+        // -----------------------------------------------------------
         const legend = L.control({ position: 'bottomright' });
         legend.onAdd = function (map) {
             const div = L.DomUtil.create('div', 'legend');
@@ -237,13 +301,15 @@
                 <h4>Legenda</h4>
                 <i class="fa-solid fa-star" style="color:red; font-size:14px;"></i> High<br>
                 <i style="background: #FFFF00; border-radius: 50%; border: 1px solid #000;"></i> Medium<br>
-                <i style="border: 2px solid #6eeeff; background: rgba(110,238,255,0.15);"></i> Batas Kawasan
+                <i style="border: 2px solid #8c38d1; background: rgba(140,56,209,0.15);"></i> Batas Kawasan
             `;
             return div;
         };
         legend.addTo(map);
 
-        // 5. Kontrol Layer Peta
+        // -----------------------------------------------------------
+        // 7. KONTROL LAYER BASEMAP & OVERLAY
+        // -----------------------------------------------------------
         const baseMaps = {
             "OpenStreetMap": osm,
             "Satelit (Esri)": esriSatelit,
@@ -252,7 +318,8 @@
 
         const overlayMaps = {
             "Titik Hotspot": hotspotLayer,
-            "Batas Kawasan": kawasanLayer
+            "Batas Kawasan": kawasanLayer,
+            "Label Kawasan": labelKawasanGroup
         };
 
         L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
