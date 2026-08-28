@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebGIS Hotspot & Batas Kawasan</title>
 
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Font Awesome untuk ikon bintang -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
     <style>
@@ -45,17 +47,35 @@
             font-size: 18px;
             text-shadow: 0 0 3px #000;
         }
-        /* Style Label Nama Kawasan (NKWS) */
-        .kawasan-label {
-            background: rgba(255, 255, 255, 0.85);
-            border: 1px solid #0000FF;
-            border-radius: 3px;
+
+        /* -----------------------------------------------------------
+           STYLE LABEL DINAMIS (NKWS)
+        ----------------------------------------------------------- */
+        .kawasan-label-dynamic {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
             color: #000080;
             font-weight: bold;
-            font-size: 11px;
-            padding: 1px 4px;
-            white-space: nowrap;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            text-align: center;
+            white-space: normal !important; /* Enable wrap text */
+            word-wrap: break-word;
+            max-width: 150px; /* Batas lebar wrap text */
+            line-height: 1.2;
+            pointer-events: none; /* Klik tembus ke layer bawahnya */
+            
+            /* Buffer / Text Halo Warna Putih */
+            text-shadow: 
+                -1px -1px 2px #fff,  
+                 1px -1px 2px #fff,
+                -1px  1px 2px #fff,
+                 1px  1px 2px #fff,
+                 0px  0px 4px #fff;
+        }
+        
+        /* Hapus panah bawaan tooltip Leaflet */
+        .kawasan-label-dynamic::before {
+            display: none !important;
         }
     </style>
 </head>
@@ -63,18 +83,19 @@
 
     <div id="map"></div>
 
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // 1. Inisialisasi Basemap (Peta Dasar)
+        // 1. Inisialisasi Basemap
         const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            attribution: '&copy; OpenStreetMap'
         });
 
         const esriSatelit = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             maxZoom: 19,
-            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            attribution: 'Tiles &copy; Esri'
         });
 
         const googleSatelit = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
@@ -82,18 +103,23 @@
             attribution: '&copy; Google Maps'
         });
 
-        // Inisialisasi Peta dengan Basemap Default (OpenStreetMap)
         const map = L.map('map', {
             center: [-2.548926, 118.014863],
             zoom: 5,
             layers: [osm]
         });
 
-        // Group Layer untuk Kontrol Overlay
+        // Layer Group
         const hotspotLayer = L.layerGroup().addTo(map);
         const kawasanLayer = L.layerGroup().addTo(map);
 
-        // 2. Memuat Batas Kawasan (kawasan.geojson) + Label NKWS
+        // Ambang batas Zoom Minimum untuk Menampilkan Label Nama Kawasan
+        const MIN_ZOOM_LABEL = 10; 
+
+        // Array penampung referensi tooltip kawasan untuk penyesuaian font dinamis
+        let kawasanTooltips = [];
+
+        // 2. Memuat Batas Kawasan (kawasan.geojson)
         fetch('kawasan.geojson')
             .then(response => response.json())
             .then(data => {
@@ -114,12 +140,21 @@
                             }
                             layer.bindPopup(popupText);
 
-                            // Menambahkan Label berdasarkan field NKWS
+                            // Label Dinamis NKWS
                             if (feature.properties.NKWS) {
                                 layer.bindTooltip(feature.properties.NKWS, {
                                     permanent: true,
                                     direction: 'center',
-                                    className: 'kawasan-label'
+                                    className: 'kawasan-label-dynamic'
+                                });
+
+                                // Simpan referensi layer untuk manipulasi ukuran font & visibilitas
+                                layer.on('add', function() {
+                                    const tooltip = layer.getTooltip();
+                                    if (tooltip) {
+                                        kawasanTooltips.push(tooltip);
+                                        updateLabelStyle();
+                                    }
                                 });
                             }
                         }
@@ -129,6 +164,31 @@
             })
             .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
 
+        // Function untuk Mengatur Ukuran Font dan Visibilitas Label Berdasarkan Zoom Level
+        function updateLabelStyle() {
+            const currentZoom = map.getZoom();
+
+            kawasanTooltips.forEach(tooltip => {
+                const element = tooltip.getElement();
+                if (element) {
+                    if (currentZoom < MIN_ZOOM_LABEL) {
+                        // Sembunyikan label jika belum mencapai zoom minimal
+                        element.style.display = 'none';
+                    } else {
+                        // Tampilkan label dan hitung ukuran font dinamis
+                        element.style.display = 'block';
+                        
+                        // Formula kalkulasi ukuran font berdasarkan level zoom (Contoh: Zoom 10 = 11px, Zoom 15 = 18px)
+                        const fontSize = Math.max(10, 11 + (currentZoom - MIN_ZOOM_LABEL) * 1.5);
+                        element.style.fontSize = fontSize + 'px';
+                    }
+                }
+            });
+        }
+
+        // Event Listener saat peta di-zoom
+        map.on('zoomend', updateLabelStyle);
+
         // 3. Memuat Data Hotspot dari API Sipongi
         const apiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=24&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
 
@@ -136,17 +196,14 @@
             .then(response => response.json())
             .then(data => {
                 L.geoJSON(data, {
-                    // Filter tingkat kepercayaan medium & high
                     filter: function(feature) {
                         const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
                         return conf === 'medium' || conf === 'high';
                     },
-                    // Simbolisasi Titik (Marker)
                     pointToLayer: function (feature, latlng) {
                         const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
 
                         if (conf === 'high') {
-                            // Simbol Bintang Merah untuk High
                             const starIcon = L.divIcon({
                                 html: '<i class="fa-solid fa-star star-icon"></i>',
                                 className: '',
@@ -155,7 +212,6 @@
                             });
                             return L.marker(latlng, { icon: starIcon });
                         } else if (conf === 'medium') {
-                            // Simbol Lingkaran Kuning untuk Medium
                             return L.circleMarker(latlng, {
                                 radius: 6,
                                 fillColor: "#FFFF00",
@@ -166,7 +222,6 @@
                             });
                         }
                     },
-                    // Popup Informasi Detail Hotspot
                     onEachFeature: function (feature, layer) {
                         const p = feature.properties;
                         const popupContent = `
@@ -185,7 +240,7 @@
             })
             .catch(err => console.error("Gagal memuat API Hotspot:", err));
 
-        // 4. Menambahkan Legenda yang Diperbarui
+        // 4. Legenda Peta
         const legend = L.control({ position: 'bottomright' });
         legend.onAdd = function (map) {
             const div = L.DomUtil.create('div', 'legend');
@@ -199,7 +254,7 @@
         };
         legend.addTo(map);
 
-        // 5. Kontrol Layer Basemap & Overlay
+        // 5. Kontrol Layer Peta
         const baseMaps = {
             "OpenStreetMap": osm,
             "Satelit (Esri)": esriSatelit,
