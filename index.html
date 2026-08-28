@@ -28,6 +28,9 @@
             border-radius: 5px;
             box-shadow: 0 0 15px rgba(0,0,0,0.2);
         }
+        .legend h4 {
+            margin: 0 0 5px 0;
+        }
         .legend i {
             width: 18px;
             height: 18px;
@@ -42,6 +45,18 @@
             font-size: 18px;
             text-shadow: 0 0 3px #000;
         }
+        /* Style Label Nama Kawasan (NKWS) */
+        .kawasan-label {
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid #0000FF;
+            border-radius: 3px;
+            color: #000080;
+            font-weight: bold;
+            font-size: 11px;
+            padding: 1px 4px;
+            white-space: nowrap;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
@@ -51,19 +66,34 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // 1. Inisialisasi Peta (Default Center Indonesia)
-        const map = L.map('map').setView([-2.548926, 118.014863], 5);
-
-        // Basemap OpenStreetMap
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // 1. Inisialisasi Basemap (Peta Dasar)
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+        });
+
+        const esriSatelit = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        });
+
+        const googleSatelit = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            attribution: '&copy; Google Maps'
+        });
+
+        // Inisialisasi Peta dengan Basemap Default (OpenStreetMap)
+        const map = L.map('map', {
+            center: [-2.548926, 118.014863],
+            zoom: 5,
+            layers: [osm]
+        });
 
         // Group Layer untuk Kontrol Overlay
         const hotspotLayer = L.layerGroup().addTo(map);
         const kawasanLayer = L.layerGroup().addTo(map);
 
-        // 2. Memuat Batas Kawasan (kawasan.geojson dari GitHub)
+        // 2. Memuat Batas Kawasan (kawasan.geojson) + Label NKWS
         fetch('kawasan.geojson')
             .then(response => response.json())
             .then(data => {
@@ -72,16 +102,26 @@
                         color: "#0000FF", // Outline biru
                         weight: 2,
                         opacity: 0.8,
-                        fillOpacity: 0.1,
+                        fillOpacity: 0.15,
                         fillColor: "#0000FF"
                     },
                     onEachFeature: function (feature, layer) {
+                        // Popup Detail Kawasan
                         if (feature.properties) {
                             let popupText = "<b>Batas Kawasan</b><br>";
                             for (let key in feature.properties) {
                                 popupText += `<b>${key}:</b> ${feature.properties[key]}<br>`;
                             }
                             layer.bindPopup(popupText);
+
+                            // Menambahkan Label berdasarkan field NKWS
+                            if (feature.properties.NKWS) {
+                                layer.bindTooltip(feature.properties.NKWS, {
+                                    permanent: true,
+                                    direction: 'center',
+                                    className: 'kawasan-label'
+                                });
+                            }
                         }
                     }
                 });
@@ -106,7 +146,7 @@
                         const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
 
                         if (conf === 'high') {
-                            // Simbol Bintang Merah
+                            // Simbol Bintang Merah untuk High
                             const starIcon = L.divIcon({
                                 html: '<i class="fa-solid fa-star star-icon"></i>',
                                 className: '',
@@ -115,10 +155,10 @@
                             });
                             return L.marker(latlng, { icon: starIcon });
                         } else if (conf === 'medium') {
-                            // Simbol Lingkaran Kuning
+                            // Simbol Lingkaran Kuning untuk Medium
                             return L.circleMarker(latlng, {
                                 radius: 6,
-                                fillColor: "#FFFF00", // Kuning
+                                fillColor: "#FFFF00",
                                 color: "#000",
                                 weight: 1,
                                 opacity: 1,
@@ -145,26 +185,33 @@
             })
             .catch(err => console.error("Gagal memuat API Hotspot:", err));
 
-        // 4. Menambahkan Legenda
+        // 4. Menambahkan Legenda yang Diperbarui
         const legend = L.control({ position: 'bottomright' });
         legend.onAdd = function (map) {
             const div = L.DomUtil.create('div', 'legend');
             div.innerHTML = `
                 <h4>Legenda</h4>
-                <i class="fa-solid fa-star" style="color:red; font-size:14px;"></i> Hotspot High Confidence<br>
-                <i style="background: #FFFF00; border-radius: 50%; border: 1px solid #000;"></i> Hotspot Medium Confidence<br>
-                <i style="border: 2px solid #0000FF; background: rgba(0,0,255,0.1);"></i> Batas Kawasan
+                <i class="fa-solid fa-star" style="color:red; font-size:14px;"></i> High<br>
+                <i style="background: #FFFF00; border-radius: 50%; border: 1px solid #000;"></i> Medium<br>
+                <i style="border: 2px solid #0000FF; background: rgba(0,0,255,0.15);"></i> Batas Kawasan
             `;
             return div;
         };
         legend.addTo(map);
 
-        // 5. Kontrol Layer Peta
+        // 5. Kontrol Layer Basemap & Overlay
+        const baseMaps = {
+            "OpenStreetMap": osm,
+            "Satelit (Esri)": esriSatelit,
+            "Satelit (Google)": googleSatelit
+        };
+
         const overlayMaps = {
             "Titik Hotspot": hotspotLayer,
             "Batas Kawasan": kawasanLayer
         };
-        L.control.layers(null, overlayMaps, { collapsed: false }).addTo(map);
+
+        L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
     </script>
 </body>
