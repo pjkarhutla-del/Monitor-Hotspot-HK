@@ -51,7 +51,6 @@
             font-weight: 600;
             text-transform: uppercase;
         }
-        /* Style Tambahan untuk Keterangan Waktu */
         .map-title-box .run-time {
             margin-top: 5px;
             padding-top: 4px;
@@ -64,6 +63,40 @@
 
         .leaflet-top.leaflet-left .leaflet-control-zoom {
             margin-top: 10px;
+        }
+
+        /* STYLE RINGKASAN HOTSPOT KIRI BAWAH */
+        .hotspot-summary-box {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 14px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+            border-left: 5px solid #d9534f;
+            margin-bottom: 15px !important;
+            margin-left: 10px !important;
+            min-width: 200px;
+            font-size: 12px;
+            color: #333;
+        }
+        .hotspot-summary-box h4 {
+            margin: 0 0 6px 0;
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #111;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 4px;
+        }
+        .hotspot-summary-box table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .hotspot-summary-box td {
+            padding: 2px 0;
+            font-weight: 600;
+        }
+        .hotspot-summary-box td.val {
+            text-align: right;
+            font-weight: 800;
         }
 
         /* Legenda Peta */
@@ -180,17 +213,38 @@
 
         L.control.zoom({ position: 'topleft' }).addTo(map);
 
+        // -----------------------------------------------------------
+        // PANEL STATISTIK HOTSPOT DALAM HUTAN KONSERVASI (KIRI BAWAH)
+        // -----------------------------------------------------------
+        const summaryControl = L.control({ position: 'bottomleft' });
+        summaryControl.onAdd = function (map) {
+            const div = L.DomUtil.create('div', 'hotspot-summary-box');
+            div.innerHTML = `
+                <h4>Hotspot dalam Hutan Konservasi</h4>
+                <table>
+                    <tr><td>High</td><td>:</td><td class="val" id="cnt-high" style="color:red;">0</td></tr>
+                    <tr><td>Medium</td><td>:</td><td class="val" id="cnt-medium" style="color:#d99b00;">0</td></tr>
+                    <tr style="border-top:1px dashed #ccc;"><td><b>Total</b></td><td>:</td><td class="val" id="cnt-total" style="color:#111;">0</td></tr>
+                </table>
+            `;
+            return div;
+        };
+        summaryControl.addTo(map);
+
         // Layer Groups
         const hotspotLayer = L.layerGroup().addTo(map);
         const kawasanLayer = L.layerGroup().addTo(map);
         const labelKawasanGroup = L.layerGroup().addTo(map);
 
-        // -----------------------------------------------------------
-        // 4. LOGIKA LABEL DINAMIS DENGAN TURF.JS
-        // -----------------------------------------------------------
+        // Variable Penyimpanan Data
+        let kawasanGeoJSONData = null;
+        let hotspotGeoJSONData = null;
         const MIN_ZOOM_LABEL = 9;
         let kawasanFeatures = [];
 
+        // -----------------------------------------------------------
+        // 4. LOGIKA LABEL DINAMIS DENGAN TURF.JS
+        // -----------------------------------------------------------
         function renderDynamicLabels() {
             labelKawasanGroup.clearLayers();
             const currentZoom = map.getZoom();
@@ -256,11 +310,57 @@
         map.on('move zoom', renderDynamicLabels);
 
         // -----------------------------------------------------------
+        // FUNGSI SPASIAL: HITUNG HOTSPOT DALAM POLYGON KAWASAN
+        // -----------------------------------------------------------
+        function calculateHotspotsInKawasan() {
+            if (!kawasanGeoJSONData || !hotspotGeoJSONData) return;
+
+            let highCount = 0;
+            let mediumCount = 0;
+
+            // Loop setiap titik hotspot
+            hotspotGeoJSONData.features.forEach(hotspot => {
+                const conf = hotspot.properties.confidence_level ? hotspot.properties.confidence_level.toLowerCase() : '';
+                
+                // Hanya hitung confidence medium dan high
+                if (conf === 'high' || conf === 'medium') {
+                    let inside = false;
+
+                    // Cek lokasi terhadap semua polygon kawasan
+                    for (let i = 0; i < kawasanGeoJSONData.features.length; i++) {
+                        const polygon = kawasanGeoJSONData.features[i];
+                        try {
+                            if (turf.booleanPointInPolygon(hotspot, polygon)) {
+                                inside = true;
+                                break; // Jika sudah terbukti di dalam salah satu polygon, stop loop kawasan
+                            }
+                        } catch (err) {
+                            // Penanganan jika ada geometry polygon yang invalid
+                            console.warn("Geometri invalid terdeteksi:", err);
+                        }
+                    }
+
+                    if (inside) {
+                        if (conf === 'high') highCount++;
+                        if (conf === 'medium') mediumCount++;
+                    }
+                }
+            });
+
+            // Update UI
+            document.getElementById('cnt-high').innerText = highCount;
+            document.getElementById('cnt-medium').innerText = mediumCount;
+            document.getElementById('cnt-total').innerText = highCount + mediumCount;
+        }
+
+        // -----------------------------------------------------------
         // 5. MEMUAT BATAS KAWASAN (kawasan.geojson)
         // -----------------------------------------------------------
         fetch('kawasan.geojson')
             .then(response => response.json())
             .then(data => {
+                kawasanGeoJSONData = data;
+
                 const layer = L.geoJSON(data, {
                     style: {
                         color: "#8c38d1",
@@ -289,6 +389,9 @@
                 });
                 kawasanLayer.addLayer(layer);
                 renderDynamicLabels();
+                
+                // Jalankan analisis jika data hotspot sudah dimuat duluan
+                calculateHotspotsInKawasan();
             })
             .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
 
@@ -300,6 +403,8 @@
         fetch(apiUrl)
             .then(response => response.json())
             .then(data => {
+                hotspotGeoJSONData = data;
+
                 L.geoJSON(data, {
                     filter: function(feature) {
                         const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
@@ -342,6 +447,9 @@
                         layer.bindPopup(popupContent);
                     }
                 }).addTo(hotspotLayer);
+
+                // Jalankan analisis spasial untuk menghitung jumlah hotspot di dalam kawasan
+                calculateHotspotsInKawasan();
             })
             .catch(err => console.error("Gagal memuat API Hotspot:", err));
 
