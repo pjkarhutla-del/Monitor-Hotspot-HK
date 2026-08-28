@@ -23,32 +23,37 @@
         }
 
         /* -----------------------------------------------------------
-           STYLE JUDUL PETA (KIRI ATAS)
+           STYLE JUDUL PETA (PALING KIRI ATAS)
         ----------------------------------------------------------- */
         .map-title-box {
             background: rgba(255, 255, 255, 0.95);
-            padding: 12px 16px;
+            padding: 10px 14px;
             border-radius: 6px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.25);
             border-left: 5px solid #004d66;
             margin-top: 10px !important;
             margin-left: 10px !important;
-            max-width: 320px;
+            max-width: 300px;
         }
         .map-title-box h3 {
-            margin: 0 0 4px 0;
-            font-size: 15px;
+            margin: 0 0 3px 0;
+            font-size: 14px;
             font-weight: 800;
             color: #111;
             letter-spacing: 0.5px;
-            line-height: 1.3;
+            line-height: 1.2;
         }
         .map-title-box p {
             margin: 0;
-            font-size: 11px;
+            font-size: 10px;
             color: #555;
             font-weight: 600;
             text-transform: uppercase;
+        }
+
+        /* Posisikan tombol zoom tepat di bawah kotak judul */
+        .leaflet-top.leaflet-left .leaflet-control-zoom {
+            margin-top: 10px;
         }
 
         /* Legenda Peta (Kanan Bawah) */
@@ -81,7 +86,7 @@
         }
 
         /* -----------------------------------------------------------
-           STYLE LABEL TEKS NKWS (DINAMIS & CENTER)
+           STYLE LABEL TEKS NKWS (DYNAMIC SCREEN CENTER)
         ----------------------------------------------------------- */
         .kawasan-dynamic-label {
             background: transparent !important;
@@ -93,7 +98,7 @@
             white-space: normal !important;
             word-wrap: break-word;
             width: 160px !important;
-            margin-left: -80px !important; /* Offset setengah dari width agar tepat di tengah secara presisi */
+            margin-left: -80px !important;
             line-height: 1.15;
             pointer-events: none;
             
@@ -115,7 +120,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // 1. Inisialisasi Basemap
+        // 1. Inisialisasi Peta & Basemap (Matikan zoomControl bawaan agar bisa diatur urutannya)
         const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap'
@@ -134,17 +139,14 @@
         const map = L.map('map', {
             center: [-2.548926, 118.014863],
             zoom: 5,
+            zoomControl: false, // Dimatikan sementara untuk menaruh judul di atasnya
             layers: [osm]
         });
 
-        // Layer Groups
-        const hotspotLayer = L.layerGroup().addTo(map);
-        const kawasanLayer = L.layerGroup().addTo(map);
-        const labelKawasanGroup = L.layerGroup().addTo(map); // Layer khusus label dinamis
-
         // -----------------------------------------------------------
-        // 2. KONTROL JUDUL PETA (KIRI ATAS)
+        // 2. MENAMPILKAN JUDUL PETA DAN TOMBOL ZOOM (URUTAN ATAS-BAWAH)
         // -----------------------------------------------------------
+        // Tambahkan Judul Peta Pertama (Posisi Paling Atas Kiri)
         const titleControl = L.control({ position: 'topleft' });
         titleControl.onAdd = function (map) {
             const div = L.DomUtil.create('div', 'map-title-box');
@@ -156,28 +158,46 @@
         };
         titleControl.addTo(map);
 
-        // -----------------------------------------------------------
-        // 3. LOGIKA LABEL TEKS NKWS DINAMIS
-        // -----------------------------------------------------------
-        const MIN_ZOOM_LABEL = 9; // Label mulai tampil pada zoom level 9 ke atas
-        let kawasanFeatures = []; // Menyimpan referensi geometri kawasan dan nama NKWS
+        // Tambahkan Tombol Zoom Setelah Judul Peta (Berada di bawah Judul)
+        L.control.zoom({ position: 'topleft' }).addTo(map);
 
-        // Fungsi memperbarui posisi & ukuran font label secara dinamis
+        // Layer Groups
+        const hotspotLayer = L.layerGroup().addTo(map);
+        const kawasanLayer = L.layerGroup().addTo(map);
+        const labelKawasanGroup = L.layerGroup().addTo(map);
+
+        // -----------------------------------------------------------
+        // 3. LOGIKA LABEL DINAMIS MENGIKUTI AREA SCREEN LAYAR
+        // -----------------------------------------------------------
+        const MIN_ZOOM_LABEL = 9;
+        let kawasanFeatures = [];
+
         function renderDynamicLabels() {
             labelKawasanGroup.clearLayers();
             const currentZoom = map.getZoom();
 
             if (currentZoom < MIN_ZOOM_LABEL) return;
 
-            // Hitung ukuran font berdasarkan zoom level
+            const mapBounds = map.getBounds();
             const fontSize = Math.max(10, 11 + (currentZoom - MIN_ZOOM_LABEL) * 1.6);
 
             kawasanFeatures.forEach(item => {
-                // Ambil titik tengah polygon (Center LatLng)
-                const centerLatLng = item.layer.getBounds().getCenter();
+                const layerBounds = item.layer.getBounds();
 
-                // Hanya render label jika titik tengah berada dalam tampilan viewport layar aktif
-                if (map.getBounds().contains(centerLatLng)) {
+                // Cek apakah polygon berpotongan/tampak di layar saat ini
+                if (mapBounds.intersects(layerBounds)) {
+                    // Cari area perpotongan (Visible Bounds) antara Polygon dan Layar Peta
+                    const visibleSouth = Math.max(mapBounds.getSouth(), layerBounds.getSouth());
+                    const visibleNorth = Math.min(mapBounds.getNorth(), layerBounds.getNorth());
+                    const visibleWest = Math.max(mapBounds.getWest(), layerBounds.getWest());
+                    const visibleEast = Math.min(mapBounds.getEast(), layerBounds.getEast());
+
+                    // Titik tengah dari polygon yang HANYA SEDANG TAMPIL DI LAYAR
+                    const visibleCenterLat = (visibleSouth + visibleNorth) / 2;
+                    const visibleCenterLng = (visibleWest + visibleEast) / 2;
+                    const dynamicCenter = L.latLng(visibleCenterLat, visibleCenterLng);
+
+                    // Buat Marker Label pada titik tengah layar tersebut
                     const labelIcon = L.divIcon({
                         className: 'kawasan-dynamic-label',
                         html: `<div style="font-size: ${fontSize}px;">${item.name}</div>`,
@@ -185,7 +205,7 @@
                         iconAnchor: [0, 0]
                     });
 
-                    const labelMarker = L.marker(centerLatLng, { 
+                    const labelMarker = L.marker(dynamicCenter, { 
                         icon: labelIcon, 
                         interactive: false 
                     });
@@ -195,8 +215,8 @@
             });
         }
 
-        // Event listener saat peta digeser atau di-zoom
-        map.on('moveend zoomend', renderDynamicLabels);
+        // Jalankan fungsi saat peta digeser (drag/move) maupun di-zoom
+        map.on('move zoom', renderDynamicLabels);
 
         // -----------------------------------------------------------
         // 4. MEMUAT BATAS KAWASAN (kawasan.geojson)
@@ -210,10 +230,9 @@
                         weight: 2,
                         opacity: 0.9,
                         fillColor: "#8c38d1",   // Fill warna #6eeeff
-                        fillOpacity: 0.5       // Fill opacity sangat tipis
+                        fillOpacity: 0.05       // Opacity fill tipis
                     },
                     onEachFeature: function (feature, layer) {
-                        // Popup Detail Kawasan
                         if (feature.properties) {
                             let popupText = "<b>Batas Kawasan</b><br>";
                             for (let key in feature.properties) {
@@ -221,7 +240,6 @@
                             }
                             layer.bindPopup(popupText);
 
-                            // Simpan ke array untuk perhitungan label dinamis
                             if (feature.properties.NKWS) {
                                 kawasanFeatures.push({
                                     name: feature.properties.NKWS,
@@ -232,8 +250,6 @@
                     }
                 });
                 kawasanLayer.addLayer(layer);
-                
-                // Render label pertama kali setelah data terload
                 renderDynamicLabels();
             })
             .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
