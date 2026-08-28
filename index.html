@@ -121,12 +121,6 @@
             text-align: center;
         }
 
-        .star-icon {
-            color: red;
-            font-size: 18px;
-            text-shadow: 0 0 3px #000;
-        }
-
         /* STYLE LABEL KAWASAN */
         .kawasan-dynamic-label {
             background: transparent !important;
@@ -158,7 +152,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // 1. Inisialisasi Peta & Basemap
+        // 1. Inisialisasi Peta & Basemap dengan Optimasi Canvas
         const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap'
@@ -178,6 +172,7 @@
             center: [-2.548926, 118.014863],
             zoom: 5,
             zoomControl: false, 
+            preferCanvas: true, // OPTIMASI PERFORMA: Render via Canvas
             layers: [googleSatelit]
         });
 
@@ -222,9 +217,9 @@
             div.innerHTML = `
                 <h4>Hotspot dalam Hutan Konservasi</h4>
                 <table>
-                    <tr><td>High</td><td>:</td><td class="val" id="cnt-high" style="color:red;">0</td></tr>
-                    <tr><td>Medium</td><td>:</td><td class="val" id="cnt-medium" style="color:#d99b00;">0</td></tr>
-                    <tr style="border-top:1px dashed #ccc;"><td><b>Total</b></td><td>:</td><td class="val" id="cnt-total" style="color:#111;">0</td></tr>
+                    <tr><td>High</td><td>:</td><td class="val" id="cnt-high" style="color:red;">Menghitung...</td></tr>
+                    <tr><td>Medium</td><td>:</td><td class="val" id="cnt-medium" style="color:#d99b00;">Menghitung...</td></tr>
+                    <tr style="border-top:1px dashed #ccc;"><td><b>Total</b></td><td>:</td><td class="val" id="cnt-total" style="color:#111;">Menghitung...</td></tr>
                 </table>
             `;
             return div;
@@ -310,33 +305,44 @@
         map.on('move zoom', renderDynamicLabels);
 
         // -----------------------------------------------------------
-        // FUNGSI SPASIAL: HITUNG HOTSPOT DALAM POLYGON KAWASAN
+        // FUNGSI SPASIAL TER-OPTIMASI: BBOX PRE-FILTERING + ASYNC
         // -----------------------------------------------------------
         function calculateHotspotsInKawasan() {
             if (!kawasanGeoJSONData || !hotspotGeoJSONData) return;
 
-            let highCount = 0;
-            let mediumCount = 0;
+            // Jalankan via setTimeout agar tidak memblokir UI browser (UI anti-freeze)
+            setTimeout(() => {
+                let highCount = 0;
+                let mediumCount = 0;
 
-            // Loop setiap titik hotspot
-            hotspotGeoJSONData.features.forEach(hotspot => {
-                const conf = hotspot.properties.confidence_level ? hotspot.properties.confidence_level.toLowerCase() : '';
-                
-                // Hanya hitung confidence medium dan high
-                if (conf === 'high' || conf === 'medium') {
+                // Pre-compute BBOX untuk seluruh kawasan
+                const kawasanWithBbox = kawasanGeoJSONData.features.map(f => ({
+                    feature: f,
+                    bbox: turf.bbox(f)
+                }));
+
+                hotspotGeoJSONData.features.forEach(hotspot => {
+                    const conf = hotspot.properties.confidence_level ? hotspot.properties.confidence_level.toLowerCase() : '';
+                    if (conf !== 'high' && conf !== 'medium') return;
+
+                    const ptCoords = hotspot.geometry.coordinates;
                     let inside = false;
 
-                    // Cek lokasi terhadap semua polygon kawasan
-                    for (let i = 0; i < kawasanGeoJSONData.features.length; i++) {
-                        const polygon = kawasanGeoJSONData.features[i];
-                        try {
-                            if (turf.booleanPointInPolygon(hotspot, polygon)) {
-                                inside = true;
-                                break; // Jika sudah terbukti di dalam salah satu polygon, stop loop kawasan
+                    for (let i = 0; i < kawasanWithBbox.length; i++) {
+                        const item = kawasanWithBbox[i];
+                        const b = item.bbox;
+
+                        // Quick Filter: Cek BBOX dulu (Sangat Cepat)
+                        if (ptCoords[0] >= b[0] && ptCoords[0] <= b[2] && ptCoords[1] >= b[1] && ptCoords[1] <= b[3]) {
+                            // Jika ada di dalam BBOX, baru cek Point in Polygon (Presisi)
+                            try {
+                                if (turf.booleanPointInPolygon(hotspot, item.feature)) {
+                                    inside = true;
+                                    break;
+                                }
+                            } catch (err) {
+                                console.warn("Geometri invalid:", err);
                             }
-                        } catch (err) {
-                            // Penanganan jika ada geometry polygon yang invalid
-                            console.warn("Geometri invalid terdeteksi:", err);
                         }
                     }
 
@@ -344,13 +350,13 @@
                         if (conf === 'high') highCount++;
                         if (conf === 'medium') mediumCount++;
                     }
-                }
-            });
+                });
 
-            // Update UI
-            document.getElementById('cnt-high').innerText = highCount;
-            document.getElementById('cnt-medium').innerText = mediumCount;
-            document.getElementById('cnt-total').innerText = highCount + mediumCount;
+                // Update UI
+                document.getElementById('cnt-high').innerText = highCount;
+                document.getElementById('cnt-medium').innerText = mediumCount;
+                document.getElementById('cnt-total').innerText = highCount + mediumCount;
+            }, 100);
         }
 
         // -----------------------------------------------------------
@@ -390,13 +396,12 @@
                 kawasanLayer.addLayer(layer);
                 renderDynamicLabels();
                 
-                // Jalankan analisis jika data hotspot sudah dimuat duluan
                 calculateHotspotsInKawasan();
             })
             .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
 
         // -----------------------------------------------------------
-        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI
+        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI (CANVAS RENDERER)
         // -----------------------------------------------------------
         const apiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=24&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
 
@@ -413,19 +418,21 @@
                     pointToLayer: function (feature, latlng) {
                         const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
 
+                        // Menggunakan CircleMarker berbasis Canvas (Ringan & Cepat)
                         if (conf === 'high') {
-                            const starIcon = L.divIcon({
-                                html: '<i class="fa-solid fa-star star-icon"></i>',
-                                className: '',
-                                iconSize: [15, 15],
-                                iconAnchor: [10, 10]
+                            return L.circleMarker(latlng, {
+                                radius: 6,
+                                fillColor: "#FF0000",
+                                color: "#000000",
+                                weight: 1.5,
+                                opacity: 1,
+                                fillOpacity: 0.95
                             });
-                            return L.marker(latlng, { icon: starIcon });
                         } else if (conf === 'medium') {
                             return L.circleMarker(latlng, {
                                 radius: 4,
                                 fillColor: "#FFFF00",
-                                color: "#000",
+                                color: "#000000",
                                 weight: 1,
                                 opacity: 1,
                                 fillOpacity: 0.9
@@ -448,7 +455,6 @@
                     }
                 }).addTo(hotspotLayer);
 
-                // Jalankan analisis spasial untuk menghitung jumlah hotspot di dalam kawasan
                 calculateHotspotsInKawasan();
             })
             .catch(err => console.error("Gagal memuat API Hotspot:", err));
@@ -461,7 +467,7 @@
             const div = L.DomUtil.create('div', 'legend');
             div.innerHTML = `
                 <h4>Legenda</h4>
-                <i class="fa-solid fa-star" style="color:red; font-size:14px;"></i> High<br>
+                <i style="background: #FF0000; border-radius: 50%; border: 1.5px solid #000;"></i> High<br>
                 <i style="background: #FFFF00; border-radius: 50%; border: 1px solid #000;"></i> Medium<br>
                 <i style="border: 2px solid #8c38d1; background: rgba(140,56,209,0.15);"></i> Batas Kawasan
             `;
