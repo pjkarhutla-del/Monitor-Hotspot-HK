@@ -61,6 +61,52 @@
             text-transform: none;
         }
 
+        /* STYLE UNTUK WIDGET PENCARIAN KOORDINAT */
+        .search-coord-box {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+            border-left: 5px solid #0275d8;
+            margin-top: 10px !important;
+            margin-left: 10px !important;
+            width: 250px;
+        }
+        .search-coord-box h4 {
+            margin: 0 0 8px 0;
+            font-size: 12px;
+            font-weight: 800;
+            color: #111;
+        }
+        .search-coord-inputs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 6px;
+        }
+        .search-coord-inputs input {
+            width: 50%;
+            padding: 5px;
+            font-size: 11px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+        }
+        .search-coord-box button {
+            width: 100%;
+            padding: 6px;
+            background: #0275d8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .search-coord-box button:hover {
+            background: #025aa5;
+        }
+
         .leaflet-top.leaflet-left .leaflet-control-zoom {
             margin-top: 10px;
         }
@@ -201,6 +247,64 @@
         };
         titleControl.addTo(map);
 
+        // -----------------------------------------------------------
+        // FITUR PENCARIAN KOORDINAT
+        // -----------------------------------------------------------
+        let searchMarker = null;
+
+        const searchCoordControl = L.control({ position: 'topleft' });
+        searchCoordControl.onAdd = function (map) {
+            const div = L.DomUtil.create('div', 'search-coord-box');
+            div.innerHTML = `
+                <h4><i class="fa-solid fa-location-dot"></i> Cari Koordinat</h4>
+                <div class="search-coord-inputs">
+                    <input type="number" id="input-lat" placeholder="Lat (cth: -2.5)" step="any">
+                    <input type="number" id="input-lng" placeholder="Long (cth: 118.0)" step="any">
+                </div>
+                <button onclick="goToCoordinate()"><i class="fa-solid fa-magnifying-glass"></i> Cari Lokasi</button>
+            `;
+            
+            // Cegah interaksi di widget mengganggu peta di belakangnya
+            L.DomEvent.disableClickPropagation(div);
+            L.DomEvent.disableScrollPropagation(div);
+            
+            return div;
+        };
+        searchCoordControl.addTo(map);
+
+        function goToCoordinate() {
+            const lat = parseFloat(document.getElementById('input-lat').value);
+            const lng = parseFloat(document.getElementById('input-lng').value);
+
+            if (isNaN(lat) || isNaN(lng)) {
+                alert("Masukkan nilai Lintang (Latitude) dan Bujur (Longitude) yang valid!");
+                return;
+            }
+
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                alert("Koordinat di luar jangkauan! Lat: -90 s/d 90, Long: -180 s/d 180.");
+                return;
+            }
+
+            if (searchMarker) {
+                map.removeLayer(searchMarker);
+            }
+
+            map.flyTo([lat, lng], 14, {
+                animate: true,
+                duration: 1.5
+            });
+
+            searchMarker = L.marker([lat, lng]).addTo(map)
+                .bindPopup(`
+                    <div style="font-size: 12px; text-align: center;">
+                        <b>Hasil Pencarian Koordinat</b><br>
+                        ${lat}, ${lng}
+                    </div>
+                `)
+                .openPopup();
+        }
+
         L.control.zoom({ position: 'topleft' }).addTo(map);
 
         // Panel Statistik
@@ -225,7 +329,7 @@
         const labelKawasanGroup = L.layerGroup().addTo(map);
 
         let kawasanGeoJSONData = null;
-        let bufferedKawasanGeoJSON = null; // Menyimpan polygon buffer kawasan
+        let bufferedKawasanGeoJSON = null; 
         let hotspotGeoJSONData = null;
         const MIN_ZOOM_LABEL = 9;
         let kawasanFeatures = [];
@@ -329,7 +433,6 @@
                         }
                     }
 
-                    // Tampilkan HANYA hotspot yang berada di dalam kawasan/buffer 100m
                     if (isInsideBuffer) {
                         filteredHotspotFeatures.push(hotspot);
                         if (conf === 'high') highCount++;
@@ -395,12 +498,11 @@
             .then(data => {
                 kawasanGeoJSONData = data;
 
-                // Buat Buffer 100 meter (0.1 kilometer) menggunakan TurfJS
                 try {
                     bufferedKawasanGeoJSON = turf.buffer(data, 0.1, { units: 'kilometers' });
                 } catch (e) {
                     console.error("Gagal membuat buffer kawasan:", e);
-                    bufferedKawasanGeoJSON = data; // Fallback ke kawasan asli jika buffer gagal
+                    bufferedKawasanGeoJSON = data; 
                 }
 
                 const layer = L.geoJSON(data, {
