@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HOTSPOT DALAM KSA, KPA, TB</title>
+    <title>HOTSPOT DALAM KSA, KPA, TB (BUFFER 100M)</title>
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -74,7 +74,7 @@
             border-left: 5px solid #d9534f;
             margin-bottom: 15px !important;
             margin-left: 10px !important;
-            min-width: 200px;
+            min-width: 220px;
             font-size: 12px;
             color: #333;
         }
@@ -152,7 +152,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // 1. Inisialisasi Peta & Basemap dengan Optimasi Canvas
+        // 1. Inisialisasi Peta & Basemap
         const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap'
@@ -172,13 +172,10 @@
             center: [-2.548926, 118.014863],
             zoom: 5,
             zoomControl: false, 
-            preferCanvas: true, // OPTIMASI PERFORMA: Render via Canvas
+            preferCanvas: true,
             layers: [esriSatelit]
         });
 
-        // -----------------------------------------------------------
-        // 2. FUNGSI UNTUK MENGAMBIL WAKTU REAL-TIME DILAKUKAN PROSES
-        // -----------------------------------------------------------
         function getFormattedRunTime() {
             const now = new Date();
             const opsiTanggal = { day: '2-digit', month: 'long', year: 'numeric' };
@@ -190,9 +187,7 @@
             return `${tanggal} | ${jam}:${menit}:${detik} WIB`;
         }
 
-        // -----------------------------------------------------------
-        // 3. JUDUL PETA DENGAN TANGGAL & JAM DIPROSES
-        // -----------------------------------------------------------
+        // Judul Peta
         const titleControl = L.control({ position: 'topleft' });
         titleControl.onAdd = function (map) {
             const div = L.DomUtil.create('div', 'map-title-box');
@@ -208,18 +203,16 @@
 
         L.control.zoom({ position: 'topleft' }).addTo(map);
 
-        // -----------------------------------------------------------
-        // PANEL STATISTIK HOTSPOT DALAM HUTAN KONSERVASI (KIRI BAWAH)
-        // -----------------------------------------------------------
+        // Panel Statistik
         const summaryControl = L.control({ position: 'bottomleft' });
         summaryControl.onAdd = function (map) {
             const div = L.DomUtil.create('div', 'hotspot-summary-box');
             div.innerHTML = `
-                <h4>Hotspot dalam Hutan Konservasi</h4>
+                <h4>Hotspot dalam Kawasan + Buffer 100m</h4>
                 <table>
-                    <tr><td>High</td><td>:</td><td class="val" id="cnt-high" style="color:red;">Menghitung...</td></tr>
-                    <tr><td>Medium</td><td>:</td><td class="val" id="cnt-medium" style="color:#d99b00;">Menghitung...</td></tr>
-                    <tr style="border-top:1px dashed #ccc;"><td><b>Total</b></td><td>:</td><td class="val" id="cnt-total" style="color:#111;">Menghitung...</td></tr>
+                    <tr><td>High</td><td>:</td><td class="val" id="cnt-high" style="color:red;">Memproses...</td></tr>
+                    <tr><td>Medium</td><td>:</td><td class="val" id="cnt-medium" style="color:#d99b00;">Memproses...</td></tr>
+                    <tr style="border-top:1px dashed #ccc;"><td><b>Total</b></td><td>:</td><td class="val" id="cnt-total" style="color:#111;">Memproses...</td></tr>
                 </table>
             `;
             return div;
@@ -231,15 +224,13 @@
         const kawasanLayer = L.layerGroup().addTo(map);
         const labelKawasanGroup = L.layerGroup().addTo(map);
 
-        // Variable Penyimpanan Data
         let kawasanGeoJSONData = null;
+        let bufferedKawasanGeoJSON = null; // Menyimpan polygon buffer kawasan
         let hotspotGeoJSONData = null;
         const MIN_ZOOM_LABEL = 9;
         let kawasanFeatures = [];
 
-        // -----------------------------------------------------------
-        // 4. LOGIKA LABEL DINAMIS DENGAN TURF.JS
-        // -----------------------------------------------------------
+        // Label Dinamis Kawasan
         function renderDynamicLabels() {
             labelKawasanGroup.clearLayers();
             const currentZoom = map.getZoom();
@@ -254,7 +245,6 @@
                 mapBounds.getNorth()
             ];
             const viewportPolygon = turf.bboxPolygon(viewportBbox);
-            
             const fontSize = Math.max(8, 9 + (currentZoom - MIN_ZOOM_LABEL) * 1.1);
 
             kawasanFeatures.forEach(item => {
@@ -263,7 +253,6 @@
                 if (mapBounds.intersects(layerBounds)) {
                     try {
                         const intersection = turf.intersect(item.geoJsonFeature, viewportPolygon);
-
                         if (intersection) {
                             const pointInside = turf.pointOnFeature(intersection);
                             const labelCoords = pointInside.geometry.coordinates;
@@ -276,12 +265,7 @@
                                 iconAnchor: [0, 0]
                             });
 
-                            const labelMarker = L.marker(labelLatLng, { 
-                                icon: labelIcon, 
-                                interactive: false 
-                            });
-                            
-                            labelKawasanGroup.addLayer(labelMarker);
+                            labelKawasanGroup.addLayer(L.marker(labelLatLng, { icon: labelIcon, interactive: false }));
                         }
                     } catch (e) {
                         const fallbackPoint = turf.pointOnFeature(item.geoJsonFeature);
@@ -305,18 +289,18 @@
         map.on('move zoom', renderDynamicLabels);
 
         // -----------------------------------------------------------
-        // FUNGSI SPASIAL TER-OPTIMASI: BBOX PRE-FILTERING + ASYNC
+        // ANALISIS SPASIAL + FILTER HOTSPOT (HANYA DALAM BUFFER 100M)
         // -----------------------------------------------------------
-        function calculateHotspotsInKawasan() {
-            if (!kawasanGeoJSONData || !hotspotGeoJSONData) return;
+        function processHotspotsAndRender() {
+            if (!bufferedKawasanGeoJSON || !hotspotGeoJSONData) return;
 
-            // Jalankan via setTimeout agar tidak memblokir UI browser (UI anti-freeze)
             setTimeout(() => {
                 let highCount = 0;
                 let mediumCount = 0;
+                const filteredHotspotFeatures = [];
 
-                // Pre-compute BBOX untuk seluruh kawasan
-                const kawasanWithBbox = kawasanGeoJSONData.features.map(f => ({
+                // Pre-compute BBOX untuk buffer kawasan
+                const bufferedWithBbox = bufferedKawasanGeoJSON.features.map(f => ({
                     feature: f,
                     bbox: turf.bbox(f)
                 }));
@@ -326,99 +310,44 @@
                     if (conf !== 'high' && conf !== 'medium') return;
 
                     const ptCoords = hotspot.geometry.coordinates;
-                    let inside = false;
+                    let isInsideBuffer = false;
 
-                    for (let i = 0; i < kawasanWithBbox.length; i++) {
-                        const item = kawasanWithBbox[i];
+                    for (let i = 0; i < bufferedWithBbox.length; i++) {
+                        const item = bufferedWithBbox[i];
                         const b = item.bbox;
 
-                        // Quick Filter: Cek BBOX dulu (Sangat Cepat)
+                        // Quick Filter via BBOX
                         if (ptCoords[0] >= b[0] && ptCoords[0] <= b[2] && ptCoords[1] >= b[1] && ptCoords[1] <= b[3]) {
-                            // Jika ada di dalam BBOX, baru cek Point in Polygon (Presisi)
                             try {
                                 if (turf.booleanPointInPolygon(hotspot, item.feature)) {
-                                    inside = true;
+                                    isInsideBuffer = true;
                                     break;
                                 }
                             } catch (err) {
-                                console.warn("Geometri invalid:", err);
+                                console.warn("Geometri invalid saat pengujian poin:", err);
                             }
                         }
                     }
 
-                    if (inside) {
+                    // Tampilkan HANYA hotspot yang berada di dalam kawasan/buffer 100m
+                    if (isInsideBuffer) {
+                        filteredHotspotFeatures.push(hotspot);
                         if (conf === 'high') highCount++;
                         if (conf === 'medium') mediumCount++;
                     }
                 });
 
-                // Update UI
+                // Update UI Statistik
                 document.getElementById('cnt-high').innerText = highCount;
                 document.getElementById('cnt-medium').innerText = mediumCount;
                 document.getElementById('cnt-total').innerText = highCount + mediumCount;
-            }, 100);
-        }
 
-        // -----------------------------------------------------------
-        // 5. MEMUAT BATAS KAWASAN (kawasan.geojson)
-        // -----------------------------------------------------------
-        fetch('kawasan.geojson')
-            .then(response => response.json())
-            .then(data => {
-                kawasanGeoJSONData = data;
-
-                const layer = L.geoJSON(data, {
-                    style: {
-                        color: "#8c38d1",
-                        weight: 2,
-                        opacity: 0.9,
-                        fillColor: "#8c38d1",
-                        fillOpacity: 0.05
-                    },
-                    onEachFeature: function (feature, layer) {
-                        if (feature.properties) {
-                            let popupText = "<b>Batas Kawasan</b><br>";
-                            for (let key in feature.properties) {
-                                popupText += `<b>${key}:</b> ${feature.properties[key]}<br>`;
-                            }
-                            layer.bindPopup(popupText);
-
-                            if (feature.properties.NKWS) {
-                                kawasanFeatures.push({
-                                    name: feature.properties.NKWS,
-                                    layer: layer,
-                                    geoJsonFeature: feature
-                                });
-                            }
-                        }
-                    }
-                });
-                kawasanLayer.addLayer(layer);
-                renderDynamicLabels();
-                
-                calculateHotspotsInKawasan();
-            })
-            .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
-
-        // -----------------------------------------------------------
-        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI (CANVAS RENDERER)
-        // -----------------------------------------------------------
-        const apiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=24&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
-
-        fetch(apiUrl)
-            .then(response => response.json())
-            .then(data => {
-                hotspotGeoJSONData = data;
-
-                L.geoJSON(data, {
-                    filter: function(feature) {
-                        const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
-                        return conf === 'medium' || conf === 'high';
-                    },
+                // Tampilkan hanya hotspot terfilter ke Layer Peta
+                hotspotLayer.clearLayers();
+                L.geoJSON({ type: "FeatureCollection", features: filteredHotspotFeatures }, {
                     pointToLayer: function (feature, latlng) {
                         const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
 
-                        // Menggunakan CircleMarker berbasis Canvas (Ringan & Cepat)
                         if (conf === 'high') {
                             return L.circleMarker(latlng, {
                                 radius: 6,
@@ -455,13 +384,72 @@
                     }
                 }).addTo(hotspotLayer);
 
-                calculateHotspotsInKawasan();
+            }, 50);
+        }
+
+        // -----------------------------------------------------------
+        // LOAD DATA KAWASAN & PROSES BUFFER 100M (0.1 KM)
+        // -----------------------------------------------------------
+        fetch('kawasan.geojson')
+            .then(response => response.json())
+            .then(data => {
+                kawasanGeoJSONData = data;
+
+                // Buat Buffer 100 meter (0.1 kilometer) menggunakan TurfJS
+                try {
+                    bufferedKawasanGeoJSON = turf.buffer(data, 0.1, { units: 'kilometers' });
+                } catch (e) {
+                    console.error("Gagal membuat buffer kawasan:", e);
+                    bufferedKawasanGeoJSON = data; // Fallback ke kawasan asli jika buffer gagal
+                }
+
+                const layer = L.geoJSON(data, {
+                    style: {
+                        color: "#8c38d1",
+                        weight: 2,
+                        opacity: 0.9,
+                        fillColor: "#8c38d1",
+                        fillOpacity: 0.05
+                    },
+                    onEachFeature: function (feature, layer) {
+                        if (feature.properties) {
+                            let popupText = "<b>Batas Kawasan</b><br>";
+                            for (let key in feature.properties) {
+                                popupText += `<b>${key}:</b> ${feature.properties[key]}<br>`;
+                            }
+                            layer.bindPopup(popupText);
+
+                            if (feature.properties.NKWS) {
+                                kawasanFeatures.push({
+                                    name: feature.properties.NKWS,
+                                    layer: layer,
+                                    geoJsonFeature: feature
+                                });
+                            }
+                        }
+                    }
+                });
+                kawasanLayer.addLayer(layer);
+                renderDynamicLabels();
+                
+                processHotspotsAndRender();
+            })
+            .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
+
+        // -----------------------------------------------------------
+        // LOAD DATA HOTSPOT
+        // -----------------------------------------------------------
+        const apiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=24&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
+
+        fetch(apiUrl)
+            .then(response => response.json())
+            .then(data => {
+                hotspotGeoJSONData = data;
+                processHotspotsAndRender();
             })
             .catch(err => console.error("Gagal memuat API Hotspot:", err));
 
-        // -----------------------------------------------------------
-        // 7. LEGENDA PETA
-        // -----------------------------------------------------------
+        // Legenda
         const legend = L.control({ position: 'bottomright' });
         legend.onAdd = function (map) {
             const div = L.DomUtil.create('div', 'legend');
@@ -475,9 +463,7 @@
         };
         legend.addTo(map);
 
-        // -----------------------------------------------------------
-        // 8. KONTROL LAYER BASEMAP & OVERLAY
-        // -----------------------------------------------------------
+        // Kontrol Layer
         const baseMaps = {
             "OpenStreetMap": osm,
             "Satelit (Esri)": esriSatelit,
