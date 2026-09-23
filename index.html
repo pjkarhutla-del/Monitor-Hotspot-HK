@@ -23,6 +23,7 @@
             padding: 0;
             height: 100%;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
         }
         #map {
             width: 100%;
@@ -45,7 +46,6 @@
             font-size: 14px;
             font-weight: 800;
             color: #111;
-            letter-spacing: 0.5px;
             line-height: 1.2;
         }
         .map-title-box p {
@@ -61,82 +61,82 @@
             border-top: 1px dashed #ccc;
             font-size: 10.5px;
             color: #d9534f;
-            font-weight: 700;
             text-transform: none;
         }
-        
-        /* STYLE WIDGET PENCARIAN KOORDINAT */
-        .search-coord-box {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 10px 12px;
-            border-radius: 6px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-            border-left: 5px solid #0275d8;
-            margin-top: 10px !important;
-            margin-left: 10px !important;
-            width: 250px;
-        }
-        .search-coord-box h4 {
-            margin: 0 0 8px 0;
-            font-size: 12px;
-            font-weight: 800;
-            color: #111;
-        }
-        .search-coord-inputs {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 6px;
-        }
-        .search-coord-inputs input {
-            width: 50%;
-            padding: 5px;
-            font-size: 11px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            outline: none;
-        }
-        .search-coord-box button {
-            width: 100%;
-            padding: 6px;
-            background: #0275d8;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .search-coord-box button:hover {
-            background: #025aa5;
-        }
 
-        /* STYLE WIDGET FILTER TANGGAL */
-        .filter-date-box {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 10px 12px;
-            border-radius: 6px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-            border-left: 5px solid #f0ad4e;
+        /* --- SIDEBAR MENU TABS --- */
+        .sidebar-wrapper {
+            display: flex;
+            align-items: flex-start;
             margin-top: 10px !important;
             margin-left: 10px !important;
-            width: 250px;
+            gap: 10px;
+            z-index: 1000;
         }
-        .filter-date-box h4 {
-            margin: 0 0 8px 0;
-            font-size: 12px;
-            font-weight: 800;
-            color: #111;
-        }
-        .filter-date-inputs {
+        
+        /* Kolom Icon */
+        .sidebar-tabs {
             display: flex;
             flex-direction: column;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+            padding: 5px;
             gap: 5px;
-            margin-bottom: 6px;
-            font-size: 11px;
-            color: #333;
         }
-        .filter-date-inputs input {
+        .tab-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 4px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .tab-icon:hover {
+            background: #f0f0f0;
+        }
+        .tab-icon.active {
+            background: #e9e9e9;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.15);
+        }
+
+        /* Panel Konten (Muncul jika Tab di-klik) */
+        .sidebar-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+            padding: 12px;
+            width: 250px;
+            display: none; /* Default disembunyikan */
+            transition: all 0.3s ease;
+        }
+        .sidebar-pane {
+            display: none;
+        }
+        .sidebar-pane.active {
+            display: block;
+        }
+        .sidebar-pane h4 {
+            margin: 0 0 10px 0;
+            font-size: 13px;
+            font-weight: 800;
+            color: #111;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+
+        /* Form di dalam Panel */
+        .input-group {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 8px;
+        }
+        .input-group input, .input-full {
             width: 100%;
             padding: 6px;
             font-size: 11px;
@@ -144,15 +144,14 @@
             border-radius: 4px;
             outline: none;
             box-sizing: border-box;
-            background: #fff;
-            text-align: center;
-            cursor: pointer;
         }
-        .filter-date-box button {
+        .input-full { margin-bottom: 8px; text-align: center; cursor: pointer; }
+        
+        /* Tombol Aksi */
+        .btn-action {
             width: 100%;
-            padding: 6px;
-            background: #f0ad4e;
-            color: #fff;
+            padding: 7px;
+            color: white;
             border: none;
             border-radius: 4px;
             font-size: 11px;
@@ -160,128 +159,11 @@
             cursor: pointer;
             transition: background 0.2s;
         }
-        .filter-date-box button:hover {
-            background: #ec971f;
-        }
+        .btn-blue { background: #0275d8; } .btn-blue:hover { background: #025aa5; }
+        .btn-orange { background: #f0ad4e; } .btn-orange:hover { background: #ec971f; }
+        .btn-purple { background: #8c38d1; } .btn-purple:hover { background: #732ab0; }
 
-        /* TOMBOL BUKA MODAL STATISTIK */
-        .stat-btn-box {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 8px 12px;
-            border-radius: 6px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-            border-left: 5px solid #8c38d1;
-            margin-top: 10px !important;
-            margin-left: 10px !important;
-            width: 250px;
-        }
-        .stat-btn-box button {
-            width: 100%;
-            padding: 7px;
-            background: #8c38d1;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .stat-btn-box button:hover {
-            background: #732ab0;
-        }
-
-        /* MODAL / PANEL STATISTIK POP-UP BESAR */
-        .stat-modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 100000;
-            display: none;
-            justify-content: center;
-            align-items: center;
-        }
-        .stat-modal-content {
-            background: #fff;
-            width: 850px;
-            max-width: 90%;
-            max-height: 85vh;
-            border-radius: 8px;
-            box-shadow: 0 5px 25px rgba(0,0,0,0.4);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        .stat-modal-header {
-            padding: 12px 16px;
-            background: #004d66;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .stat-modal-header h3 {
-            margin: 0;
-            font-size: 15px;
-        }
-        .stat-modal-close {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 18px;
-            cursor: pointer;
-        }
-        .stat-modal-body {
-            padding: 15px;
-            overflow-y: auto;
-            flex: 1;
-        }
-        .tab-buttons {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 8px;
-        }
-        .tab-btn {
-            padding: 6px 14px;
-            background: #e0e0e0;
-            border: none;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .tab-btn.active {
-            background: #004d66;
-            color: white;
-        }
-        .tab-pane {
-            display: none;
-        }
-        .tab-pane.active {
-            display: block;
-        }
-        .chart-filter-row {
-            margin-bottom: 12px;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .chart-filter-row select {
-            padding: 5px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-            font-size: 12px;
-            outline: none;
-        }
-
-        /* RINGKASAN HOTSPOT KIRI BAWAH */
+        /* --- RINGKASAN KIRI BAWAH --- */
         .hotspot-summary-box {
             background: rgba(255, 255, 255, 0.95);
             padding: 10px 14px;
@@ -294,99 +176,44 @@
             font-size: 12px;
             color: #333;
         }
-        .hotspot-summary-box h4 {
-            margin: 0 0 6px 0;
-            font-size: 12.5px;
-            font-weight: 800;
-            color: #111;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 4px;
-        }
-        .hotspot-summary-box table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .hotspot-summary-box td {
-            padding: 2px 0;
-            font-weight: 600;
-        }
-        .hotspot-summary-box td.val {
-            text-align: right;
-            font-weight: 800;
-        }
+        .hotspot-summary-box h4 { margin: 0 0 6px 0; font-size: 12.5px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+        .hotspot-summary-box table { width: 100%; border-collapse: collapse; }
+        .hotspot-summary-box td { padding: 2px 0; font-weight: 600; }
+        .hotspot-summary-box td.val { text-align: right; font-weight: 800; }
 
-        /* Legenda Peta */
-        .legend {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 10px 15px;
-            line-height: 24px;
-            color: #333;
-            border-radius: 5px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        /* --- MODAL STATISTIK & GRAFIK (TETAP SAMA) --- */
+        .stat-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100000; display: none; justify-content: center; align-items: center;
         }
-        .legend h4 {
-            margin: 0 0 5px 0;
-            font-size: 13px;
+        .stat-modal-content {
+            background: #fff; width: 850px; max-width: 90%; max-height: 85vh; border-radius: 8px; box-shadow: 0 5px 25px rgba(0,0,0,0.4); display: flex; flex-direction: column; overflow: hidden;
         }
-        .legend i {
-            width: 18px;
-            height: 18px;
-            float: left;
-            margin-right: 8px;
-            opacity: 0.9;
-            text-align: center;
-        }
+        .stat-modal-header { padding: 12px 16px; background: #004d66; color: white; display: flex; justify-content: space-between; align-items: center; }
+        .stat-modal-header h3 { margin: 0; font-size: 15px; }
+        .stat-modal-close { background: none; border: none; color: white; font-size: 18px; cursor: pointer; }
+        .stat-modal-body { padding: 15px; overflow-y: auto; flex: 1; }
+        .tab-buttons { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        .tab-btn { padding: 6px 14px; background: #e0e0e0; border: none; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; }
+        .tab-btn.active { background: #004d66; color: white; }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+        .chart-filter-row { margin-bottom: 12px; display: flex; gap: 10px; align-items: center; font-size: 12px; font-weight: 600; }
+        .chart-filter-row select { padding: 5px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; outline: none; }
 
-        /* STYLE LABEL KAWASAN */
+        /* --- LEGENDA & LAINNYA --- */
+        .legend { background: rgba(255, 255, 255, 0.95); padding: 10px 15px; line-height: 24px; color: #333; border-radius: 5px; box-shadow: 0 0 15px rgba(0,0,0,0.2); }
+        .legend h4 { margin: 0 0 5px 0; font-size: 13px; }
+        .legend i { width: 18px; height: 18px; float: left; margin-right: 8px; opacity: 0.9; text-align: center; }
+
         .kawasan-dynamic-label {
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            color: #00334e;
-            font-weight: 800;
-            text-align: center;
-            white-space: normal !important;
-            word-wrap: break-word;
-            width: 120px !important;
-            margin-left: -60px !important;
-            line-height: 1.1;
-            pointer-events: none;
-            
-            text-shadow: 
-                -1.5px -1.5px 0 #fff,  
-                 1.5px -1.5px 0 #fff,
-                -1.5px  1.5px 0 #fff,
-                 1.5px  1.5px 0 #fff,
-                 0px    0px 5px #fff;
+            background: transparent !important; border: none !important; box-shadow: none !important; color: #00334e; font-weight: 800; text-align: center; white-space: normal !important; word-wrap: break-word; width: 120px !important; margin-left: -60px !important; line-height: 1.1; pointer-events: none;
+            text-shadow: -1.5px -1.5px 0 #fff, 1.5px -1.5px 0 #fff, -1.5px 1.5px 0 #fff, 1.5px 1.5px 0 #fff, 0px 0px 5px #fff;
         }
 
-        /* TOAST NOTIFICATION */
         .toast-notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(40, 167, 69, 0.95);
-            color: white;
-            padding: 12px 18px;
-            border-radius: 6px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            font-size: 13px;
-            font-weight: 600;
-            z-index: 99999;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transform: translateY(-50px);
-            opacity: 0;
-            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            position: fixed; top: 20px; right: 20px; background: rgba(40, 167, 69, 0.95); color: white; padding: 12px 18px; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-size: 13px; font-weight: 600; z-index: 99999; display: flex; align-items: center; gap: 10px; transform: translateY(-50px); opacity: 0; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
         }
-        .toast-notification.show {
-            transform: translateY(0);
-            opacity: 1;
-        }
-        .toast-notification i {
-            font-size: 16px;
-        }
+        .toast-notification.show { transform: translateY(0); opacity: 1; }
     </style>
 </head>
 <body>
@@ -402,22 +229,22 @@
             </div>
             <div class="stat-modal-body">
                 <div class="tab-buttons">
-                    <button class="tab-btn active" onclick="switchTab(event, 'tab-highest')">Top NKWS (High & Medium)</button>
-                    <button class="tab-btn" onclick="switchTab(event, 'tab-weekly')">Tren Hotspot 1 Minggu Terakhir (by UPT)</button>
+                    <button class="tab-btn active" onclick="switchModalTab(event, 'modal-tab-highest')">Top NKWS (High & Medium)</button>
+                    <button class="tab-btn" onclick="switchModalTab(event, 'modal-tab-weekly')">Tren Hotspot 1 Minggu Terakhir (by UPT)</button>
                 </div>
 
                 <!-- TAB 1: NKWS TERTINGGI -->
-                <div id="tab-highest" class="tab-pane active">
+                <div id="modal-tab-highest" class="tab-pane active">
                     <div class="chart-filter-row">
-                        <span>Menampilkan 10 NKWS dengan Hotspot Terbanyak (Berdasarkan rentang tanggal aktif peta)</span>
+                        <span>Menampilkan 10 NKWS dengan Hotspot Terbanyak (Berdasarkan rentang tanggal aktif)</span>
                     </div>
                     <div style="position: relative; height:350px; width:100%;">
                         <canvas id="chartHighestNKWS"></canvas>
                     </div>
                 </div>
 
-                <!-- TAB 2: TREN HARI HINGGA 1 MINGGU TERAKHIR BERDASARKAN UPT -->
-                <div id="tab-weekly" class="tab-pane">
+                <!-- TAB 2: TREN MINGGUAN -->
+                <div id="modal-tab-weekly" class="tab-pane">
                     <div class="chart-filter-row">
                         <label for="select-upt">Pilih Nama UPT (NUPT) terlebih dahulu:</label>
                         <select id="select-upt" onchange="updateWeeklyChart()">
@@ -447,7 +274,7 @@
         let currentActiveDateRange = "Semua Periode / Belum Difilter";
         let chartHighestInstance = null;
         let chartWeeklyInstance = null;
-        let globalHotspotRawList = []; // Menyimpan list data mentah hotspot untuk keperluan line chart mingguan
+        let globalHotspotRawList = [];
 
         function showToast(message) {
             const toast = document.getElementById('success-toast');
@@ -459,24 +286,19 @@
         function toggleStatModal(show) {
             const modal = document.getElementById('stat-modal');
             modal.style.display = show ? 'flex' : 'none';
-            if (show) {
-                renderChartsData();
-            }
+            if (show) renderChartsData();
         }
 
-        function switchTab(evt, tabId) {
-            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        function switchModalTab(evt, tabId) {
+            document.querySelectorAll('.stat-modal-body .tab-pane').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.stat-modal-body .tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             evt.currentTarget.classList.add('active');
-            if (tabId === 'tab-highest') {
-                renderHighestChart();
-            } else {
-                renderWeeklyChart();
-            }
+            if (tabId === 'modal-tab-highest') renderHighestChart();
+            else renderWeeklyChart();
         }
 
-        // 1. Inisialisasi Peta & Basemap
+        // 1. Inisialisasi Peta
         const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
         const esriSatelit = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles &copy; Esri' });
         const googleSatelit = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20, attribution: '&copy; Google Maps' });
@@ -488,44 +310,117 @@
             preferCanvas: true, 
             layers: [esriSatelit]
         });
+        L.control.zoom({ position: 'topright' }).addTo(map);
 
-        function getFormattedRunTime() {
-            const now = new Date();
-            return `${now.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })} | ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')} WIB`;
-        }
-
+        // Judul Peta
         const titleControl = L.control({ position: 'topleft' });
-        titleControl.onAdd = function (map) {
+        titleControl.onAdd = function () {
             const div = L.DomUtil.create('div', 'map-title-box');
+            const now = new Date();
+            const timeStr = `${now.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })} | ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')} WIB`;
             div.innerHTML = `
                 <h3>HOTSPOT DALAM KSA, KPA, TB</h3>
                 <p>Direktorat Konservasi Kawasan, DITJEN KSDAE 2026</p>
-                <p>sumber data : SIPONGI</p>
-                <p class="run-time"><i class="fa-regular fa-clock"></i> Diproses: ${getFormattedRunTime()}</p>
+                <p class="run-time"><i class="fa-regular fa-clock"></i> Diproses: ${timeStr}</p>
             `;
             return div;
         };
         titleControl.addTo(map);
 
-        // FITUR PENCARIAN KOORDINAT
-        let searchMarker = null;
-        const searchCoordControl = L.control({ position: 'topleft' });
-        searchCoordControl.onAdd = function (map) {
-            const div = L.DomUtil.create('div', 'search-coord-box');
-            div.innerHTML = `
-                <h4><i class="fa-solid fa-location-dot"></i> Cari Koordinat</h4>
-                <div class="search-coord-inputs">
-                    <input type="number" id="input-lat" placeholder="Lat (cth: -2.5)" step="any">
-                    <input type="number" id="input-lng" placeholder="Long (cth: 118.0)" step="any">
+        // --- MENU SIDEBAR TAB (GABUNGAN KOORDINAT, TANGGAL, STATISTIK) ---
+        const sidebarControl = L.control({ position: 'topleft' });
+        sidebarControl.onAdd = function () {
+            const wrapper = L.DomUtil.create('div', 'sidebar-wrapper');
+            wrapper.innerHTML = `
+                <!-- Kolom Icon -->
+                <div class="sidebar-tabs">
+                    <button class="tab-icon" id="btn-tab-search" onclick="toggleSidebarTab('search')" title="Cari Koordinat">
+                        <i class="fa-solid fa-location-dot" style="color:#0275d8"></i>
+                    </button>
+                    <button class="tab-icon" id="btn-tab-filter" onclick="toggleSidebarTab('filter')" title="Filter Tanggal">
+                        <i class="fa-solid fa-calendar-days" style="color:#f0ad4e"></i>
+                    </button>
+                    <button class="tab-icon" id="btn-tab-stat" onclick="toggleSidebarTab('stat')" title="Grafik & Statistik">
+                        <i class="fa-solid fa-chart-pie" style="color:#8c38d1"></i>
+                    </button>
                 </div>
-                <button onclick="goToCoordinate()"><i class="fa-solid fa-magnifying-glass"></i> Cari Lokasi</button>
-            `;
-            L.DomEvent.disableClickPropagation(div);
-            L.DomEvent.disableScrollPropagation(div);
-            return div;
-        };
-        searchCoordControl.addTo(map);
+                
+                <!-- Box Konten Sebelah Icon -->
+                <div class="sidebar-content" id="sidebar-content">
+                    
+                    <!-- Form Pencarian Koordinat -->
+                    <div id="pane-search" class="sidebar-pane">
+                        <h4><i class="fa-solid fa-location-dot"></i> Cari Koordinat</h4>
+                        <div class="input-group">
+                            <input type="number" id="input-lat" placeholder="Lat (cth: -2.5)" step="any">
+                            <input type="number" id="input-lng" placeholder="Long (cth: 118.0)" step="any">
+                        </div>
+                        <button class="btn-action btn-blue" onclick="goToCoordinate()"><i class="fa-solid fa-magnifying-glass"></i> Cari Lokasi</button>
+                    </div>
 
+                    <!-- Form Filter Tanggal -->
+                    <div id="pane-filter" class="sidebar-pane">
+                        <h4><i class="fa-solid fa-calendar-days"></i> Filter Tanggal</h4>
+                        <input type="text" id="input-date-range" class="input-full" placeholder="Pilih Rentang Tanggal..." readonly>
+                        <button class="btn-action btn-orange" onclick="applyDateFilter()"><i class="fa-solid fa-filter"></i> Terapkan Filter</button>
+                    </div>
+
+                    <!-- Pintasan Statistik -->
+                    <div id="pane-stat" class="sidebar-pane">
+                        <h4><i class="fa-solid fa-chart-pie"></i> Statistik Hotspot</h4>
+                        <p style="font-size:11px; color:#555; margin-bottom:10px; line-height:1.4;">Buka panel lengkap untuk melihat chart bar Top Kawasan & Line chart tren mingguan.</p>
+                        <button class="btn-action btn-purple" onclick="toggleStatModal(true)"><i class="fa-solid fa-chart-bar"></i> Buka Grafik</button>
+                    </div>
+
+                </div>
+            `;
+            L.DomEvent.disableClickPropagation(wrapper);
+            L.DomEvent.disableScrollPropagation(wrapper);
+            return wrapper;
+        };
+        sidebarControl.addTo(map);
+
+        // Fungsi Toggle Tab Sidebar
+        function toggleSidebarTab(targetTab) {
+            const contentBox = document.getElementById('sidebar-content');
+            const targetBtn = document.getElementById(`btn-tab-${targetTab}`);
+            const isActive = targetBtn.classList.contains('active');
+
+            // 1. Matikan semua tab dan sembunyikan semua pane
+            document.querySelectorAll('.tab-icon').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.sidebar-pane').forEach(pane => pane.classList.remove('active'));
+
+            if (isActive) {
+                // Jika klik tab yang sudah aktif = Tutup panel
+                contentBox.style.display = 'none';
+            } else {
+                // Jika klik tab lain = Buka panel & nyalakan tab yang sesuai
+                targetBtn.classList.add('active');
+                contentBox.style.display = 'block';
+                document.getElementById(`pane-${targetTab}`).classList.add('active');
+                
+                // Ubah warna border sebelah kiri panel sesuai dengan icon
+                if (targetTab === 'search') contentBox.style.borderLeft = '4px solid #0275d8';
+                if (targetTab === 'filter') contentBox.style.borderLeft = '4px solid #f0ad4e';
+                if (targetTab === 'stat') contentBox.style.borderLeft = '4px solid #8c38d1';
+            }
+        }
+
+        // Inisialisasi Flatpickr
+        let datePickerInstance = null;
+        setTimeout(() => {
+            datePickerInstance = flatpickr("#input-date-range", {
+                mode: "range",
+                dateFormat: "Y-m-d",
+                locale: "id",
+                altInput: true,
+                altFormat: "j M Y",
+                conjunction: " - "
+            });
+        }, 200);
+
+        // Aksi Cari Koordinat
+        let searchMarker = null;
         function goToCoordinate() {
             const lat = parseFloat(document.getElementById('input-lat').value);
             const lng = parseFloat(document.getElementById('input-lng').value);
@@ -535,51 +430,11 @@
             searchMarker = L.marker([lat, lng]).addTo(map).bindPopup(`<b>${lat}, ${lng}</b>`).openPopup();
         }
 
-        // FITUR FILTER TANGGAL
-        const filterDateControl = L.control({ position: 'topleft' });
-        filterDateControl.onAdd = function (map) {
-            const div = L.DomUtil.create('div', 'filter-date-box');
-            div.innerHTML = `
-                <h4><i class="fa-solid fa-calendar-days"></i> Filter Tanggal</h4>
-                <div class="filter-date-inputs">
-                    <input type="text" id="input-date-range" placeholder="Pilih Rentang Tanggal..." readonly>
-                </div>
-                <button onclick="applyDateFilter()"><i class="fa-solid fa-filter"></i> Terapkan Filter</button>
-            `;
-            L.DomEvent.disableClickPropagation(div);
-            L.DomEvent.disableScrollPropagation(div);
-            return div;
-        };
-        filterDateControl.addTo(map);
-
-        // TOMBOL BUKA STATISTIK PANEL
-        const statBtnControl = L.control({ position: 'topleft' });
-        statBtnControl.onAdd = function (map) {
-            const div = L.DomUtil.create('div', 'stat-btn-box');
-            div.innerHTML = `<button onclick="toggleStatModal(true)"><i class="fa-solid fa-chart-pie"></i> Buka Grafik & Statistik</button>`;
-            L.DomEvent.disableClickPropagation(div);
-            L.DomEvent.disableScrollPropagation(div);
-            return div;
-        };
-        statBtnControl.addTo(map);
-
-        let datePickerInstance = null;
-        setTimeout(() => {
-            datePickerInstance = flatpickr("#input-date-range", {
-                mode: "range",
-                dateFormat: "Y-m-d",
-                locale: "id",
-                altInput: true,
-                altFormat: "j F Y",
-                conjunction: " s/d "
-            });
-        }, 200);
-
+        // Aksi Filter Tanggal
         function applyDateFilter() {
             if (!datePickerInstance) return;
             const selectedDates = datePickerInstance.selectedDates;
             if (selectedDates.length < 2) { alert("Pilih rentang tanggal lengkap!"); return; }
-
             const dateFrom = flatpickr.formatDate(selectedDates[0], "Y-m-d");
             const dateTo = flatpickr.formatDate(selectedDates[1], "Y-m-d");
             currentActiveDateRange = `${dateFrom} s/d ${dateTo}`;
@@ -588,18 +443,17 @@
             loadHotspotData(customApiUrl, dateFrom, dateTo);
         }
 
-        L.control.zoom({ position: 'topleft' }).addTo(map);
+        // --- LAYER CONTROL, GEOJSON & LOGIC (Sama seperti sebelumnya) ---
 
-        // PANEL STATISTIK KIRI BAWAH
         const summaryControl = L.control({ position: 'bottomleft' });
-        summaryControl.onAdd = function (map) {
+        summaryControl.onAdd = function () {
             const div = L.DomUtil.create('div', 'hotspot-summary-box');
             div.innerHTML = `
-                <h4>Hotspot dalam Hutan Konservasi</h4>
+                <h4>Hotspot Hutan Konservasi</h4>
                 <table>
-                    <tr><td>High</td><td>:</td><td class="val" id="cnt-high" style="color:red;">Menghitung...</td></tr>
-                    <tr><td>Medium</td><td>:</td><td class="val" id="cnt-medium" style="color:#d99b00;">Menghitung...</td></tr>
-                    <tr style="border-top:1px dashed #ccc;"><td><b>Total</b></td><td>:</td><td class="val" id="cnt-total" style="color:#111;">Menghitung...</td></tr>
+                    <tr><td>High</td><td>:</td><td class="val" id="cnt-high" style="color:red;">...</td></tr>
+                    <tr><td>Medium</td><td>:</td><td class="val" id="cnt-medium" style="color:#d99b00;">...</td></tr>
+                    <tr style="border-top:1px dashed #ccc;"><td><b>Total</b></td><td>:</td><td class="val" id="cnt-total" style="color:#111;">...</td></tr>
                 </table>
             `;
             return div;
@@ -611,18 +465,13 @@
         const kawasanLayer = L.layerGroup().addTo(map);
         const labelKawasanGroup = L.layerGroup().addTo(map);
 
-        let kawasanGeoJSONData = null;
-        let hotspotGeoJSONData = null;
+        let kawasanGeoJSONData = null, hotspotGeoJSONData = null, kawasanFeatures = [];
+        let isKawasanLoaded = false, isHotspotLoaded = false;
         const MIN_ZOOM_LABEL = 9;
-        let kawasanFeatures = [];
 
-        let isKawasanLoaded = false;
-        let isHotspotLoaded = false;
-
-        function checkAllDataLoaded(isFilterAction = false) {
+        function checkAllDataLoaded(isFilter = false) {
             if (isKawasanLoaded && isHotspotLoaded) {
-                if (isFilterAction) showToast("Filter tanggal & grafik diperbarui!");
-                else showToast("Data hotspot & kawasan siap!");
+                showToast(isFilter ? "Data tanggal diperbarui!" : "Data utama siap!");
                 populateUptDropdown();
             }
         }
@@ -631,366 +480,161 @@
             labelKawasanGroup.clearLayers();
             const currentZoom = map.getZoom();
             if (currentZoom < MIN_ZOOM_LABEL) return;
-
             const mapBounds = map.getBounds();
-            const viewportBbox = [mapBounds.getWest(), mapBounds.getSouth(), mapBounds.getEast(), mapBounds.getNorth()];
-            const viewportPolygon = turf.bboxPolygon(viewportBbox);
-            const fontSize = Math.max(8, 9 + (currentZoom - MIN_ZOOM_LABEL) * 1.1);
-
+            const viewportPolygon = turf.bboxPolygon([mapBounds.getWest(), mapBounds.getSouth(), mapBounds.getEast(), mapBounds.getNorth()]);
+            
             kawasanFeatures.forEach(item => {
                 if (mapBounds.intersects(item.layer.getBounds())) {
                     try {
                         const intersection = turf.intersect(item.geoJsonFeature, viewportPolygon);
-                        const pointInside = turf.pointOnFeature(intersection || item.geoJsonFeature);
-                        const coords = pointInside.geometry.coordinates;
-                        const labelLatLng = L.latLng(coords[1], coords[0]);
-                        
-                        const labelIcon = L.divIcon({
-                            className: 'kawasan-dynamic-label',
-                            html: `<div style="font-size: ${fontSize}px;">${item.name}</div>`,
-                            iconSize: [0, 0],
-                            iconAnchor: [0, 0]
-                        });
-                        labelKawasanGroup.addLayer(L.marker(labelLatLng, { icon: labelIcon, interactive: false }));
+                        const coords = turf.pointOnFeature(intersection || item.geoJsonFeature).geometry.coordinates;
+                        const labelIcon = L.divIcon({ className: 'kawasan-dynamic-label', html: `<div style="font-size: ${Math.max(8, 9 + (currentZoom - MIN_ZOOM_LABEL) * 1.1)}px;">${item.name}</div>`, iconSize: [0,0] });
+                        labelKawasanGroup.addLayer(L.marker([coords[1], coords[0]], { icon: labelIcon, interactive: false }));
                     } catch (e) {}
                 }
             });
         }
-
         map.on('move zoom', renderDynamicLabels);
-
-        function updateKawasanPopups() {
-            kawasanFeatures.forEach(item => {
-                const totalKawasan = item.highCount + item.mediumCount;
-                const kawasanPopup = `
-                    <div style="font-size: 13px; min-width: 210px; line-height: 1.4;">
-                        <h4 style="margin: 0 0 4px 0; color: #8c38d1; border-bottom: 1px solid #ddd; padding-bottom: 3px;">${item.name || 'Kawasan'}</h4>
-                        <b>Nama UPT (NUPT):</b> ${item.upt || '-'}<br>
-                        <b>Rentang Tanggal:</b> <span style="color:#0275d8; font-weight:600;">${currentActiveDateRange}</span>
-                        <hr style="border:0; border-top:1px dashed #ccc; margin:5px 0;">
-                        <b>Rekapitulasi Hotspot:</b><br>
-                        - High Confidence: <span style="color:red; font-weight:bold;">${item.highCount}</span><br>
-                        - Medium Confidence: <span style="color:#d99b00; font-weight:bold;">${item.mediumCount}</span><br>
-                        <hr style="border:0; border-top:1px dashed #ccc; margin:5px 0;">
-                        <b>Total Hotspot:</b> <span style="font-weight:bold; color:#111;">${totalKawasan} Titik</span>
-                    </div>
-                `;
-                item.layer.bindPopup(kawasanPopup);
-            });
-        }
 
         function processHotspotLayers(filterFrom = null) {
             if (!kawasanGeoJSONData || !hotspotGeoJSONData) return;
+            hotspotDalamLayer.clearLayers(); hotspotLuarLayer.clearLayers();
+            let highCount = 0, mediumCount = 0;
+            globalHotspotRawList = [];
 
-            hotspotDalamLayer.clearLayers();
-            hotspotLuarLayer.clearLayers();
-
-            let highCount = 0;
-            let mediumCount = 0;
-            globalHotspotRawList = []; // Reset array penampung data mentah hotspot dalam kawasan
-
-            kawasanFeatures.forEach(item => {
-                item.highCount = 0;
-                item.mediumCount = 0;
-            });
-
-            const kawasanWithBbox = kawasanGeoJSONData.features.map((f, index) => ({
-                feature: f,
-                bbox: turf.bbox(f),
-                featureIndex: index
-            }));
+            kawasanFeatures.forEach(k => { k.highCount = 0; k.mediumCount = 0; });
+            const kawasanBbox = kawasanGeoJSONData.features.map((f, i) => ({ feature: f, bbox: turf.bbox(f), i: i }));
 
             hotspotGeoJSONData.features.forEach(hotspot => {
-                const conf = hotspot.properties.confidence_level ? hotspot.properties.confidence_level.toLowerCase() : '';
+                const conf = (hotspot.properties.confidence_level || '').toLowerCase();
                 if (conf !== 'high' && conf !== 'medium') return;
 
-                const ptCoords = hotspot.geometry.coordinates;
-                let inside = false;
-                let matchedKawasanIndex = -1;
-
-                for (let i = 0; i < kawasanWithBbox.length; i++) {
-                    const item = kawasanWithBbox[i];
-                    const b = item.bbox;
-                    if (ptCoords[0] >= b[0] && ptCoords[0] <= b[2] && ptCoords[1] >= b[1] && ptCoords[1] <= b[3]) {
-                        try {
-                            if (turf.booleanPointInPolygon(hotspot, item.feature)) {
-                                inside = true;
-                                matchedKawasanIndex = item.featureIndex;
-                                break;
-                            }
-                        } catch (err) {}
+                const pt = hotspot.geometry.coordinates;
+                let inside = false, kIdx = -1;
+                for (let k of kawasanBbox) {
+                    if (pt[0] >= k.bbox[0] && pt[0] <= k.bbox[2] && pt[1] >= k.bbox[1] && pt[1] <= k.bbox[3]) {
+                        if (turf.booleanPointInPolygon(hotspot, k.feature)) { inside = true; kIdx = k.i; break; }
                     }
                 }
 
-                let fillColor = (conf === 'high') ? "#FF0000" : "#FFFF00";
-                const marker = L.circleMarker([ptCoords[1], ptCoords[0]], {
-                    radius: (conf === 'high') ? 6 : 4,
-                    fillColor: fillColor,
-                    color: "#000",
-                    weight: 1,
-                    opacity: 1,
-                    fillOpacity: 0.95
+                const marker = L.circleMarker([pt[1], pt[0]], {
+                    radius: conf === 'high' ? 6 : 4, fillColor: conf === 'high' ? "#FF0000" : "#FFFF00",
+                    color: "#000", weight: 1, opacity: 1, fillOpacity: 0.95
                 });
-
+                
                 const p = hotspot.properties;
-                marker.bindPopup(`
-                    <div style="font-size: 13px;">
-                        <h4 style="margin: 0 0 5px 0; color: #d9534f;">Hotspot ${p.sumber || ''} (${inside ? 'Dalam Kawasan' : 'Luar Kawasan'})</h4>
-                        <b>Waktu:</b> ${p.date_hotspot || '-'}<br>
-                        <b>Confidence:</b> ${p.confidence_level}<br>
-                        <b>Lokasi:</b> ${p.kabkota || '-'}, ${p.nama_provinsi || '-'}<br>
-                    </div>
-                `);
+                marker.bindPopup(`<b>Confidence:</b> ${p.confidence_level}<br><b>Waktu:</b> ${p.date_hotspot||'-'}`);
 
                 if (inside) {
                     hotspotDalamLayer.addLayer(marker);
-                    const kItem = kawasanFeatures[matchedKawasanIndex];
-
+                    const kItem = kawasanFeatures[kIdx];
                     if (conf === 'high') { highCount++; kItem.highCount++; }
                     if (conf === 'medium') { mediumCount++; kItem.mediumCount++; }
-
-                    // Simpan data mentah untuk analisis tren mingguan per NKWS
-                    const dateStr = p.date_hotspot || p.tanggal || '';
-                    if (dateStr) {
-                        const cleanDate = dateStr.split(' ')[0]; // Ambil format YYYY-MM-DD
-                        globalHotspotRawList.push({
-                            nkws: kItem.name,
-                            upt: kItem.upt,
-                            date: cleanDate
-                        });
-                    }
-                } else {
-                    hotspotLuarLayer.addLayer(marker);
-                }
+                    
+                    if (p.date_hotspot || p.tanggal) globalHotspotRawList.push({ nkws: kItem.name, upt: kItem.upt, date: (p.date_hotspot || p.tanggal).split(' ')[0] });
+                } else hotspotLuarLayer.addLayer(marker);
             });
 
-            updateKawasanPopups();
+            kawasanFeatures.forEach(item => {
+                item.layer.bindPopup(`<b>${item.name}</b><br>UPT: ${item.upt}<hr style="margin:5px 0;">High: <span style="color:red">${item.highCount}</span> | Medium: <span style="color:#d99b00">${item.mediumCount}</span><br>Total: <b>${item.highCount+item.mediumCount}</b>`);
+            });
+
             document.getElementById('cnt-high').innerText = highCount;
             document.getElementById('cnt-medium').innerText = mediumCount;
             document.getElementById('cnt-total').innerText = highCount + mediumCount;
-
+            
             isHotspotLoaded = true;
             checkAllDataLoaded(filterFrom !== null);
         }
 
-        // POPULATE DROPDOWN UPT
         function populateUptDropdown() {
-            const select = document.getElementById('select-upt');
-            const uptSet = new Set();
-            kawasanFeatures.forEach(k => {
-                if (k.upt && k.upt !== '-') uptSet.add(k.upt);
-            });
-
-            select.innerHTML = '<option value="">-- Pilih UPT --</option>';
-            Array.from(uptSet).sort().forEach(upt => {
-                select.innerHTML += `<option value="${upt}">${upt}</option>`;
-            });
+            const s = document.getElementById('select-upt'), set = new Set();
+            kawasanFeatures.forEach(k => { if(k.upt && k.upt!=='-') set.add(k.upt); });
+            s.innerHTML = '<option value="">-- Pilih UPT --</option>';
+            Array.from(set).sort().forEach(u => s.innerHTML += `<option value="${u}">${u}</option>`);
         }
 
-        // RENDER GRAFIK DENGAN CHART.JS
-        function renderChartsData() {
-            renderHighestChart();
-            renderWeeklyChart();
-        }
+        function renderChartsData() { renderHighestChart(); renderWeeklyChart(); }
 
         function renderHighestChart() {
-            const sortedKawasan = [...kawasanFeatures]
-                .map(k => ({ name: k.name, high: k.highCount, medium: k.mediumCount, total: k.highCount + k.mediumCount }))
-                .filter(k => k.total > 0)
-                .sort((a, b) => b.total - a.total)
-                .slice(0, 10);
-
-            const labels = sortedKawasan.map(k => k.name);
-            const dataMedium = sortedKawasan.map(k => k.medium);
-            const dataHigh = sortedKawasan.map(k => k.high);
-
-            const ctx = document.getElementById('chartHighestNKWS').getContext('2d');
-            if (chartHighestInstance) chartHighestInstance.destroy();
-
-            chartHighestInstance = new Chart(ctx, {
+            const d = [...kawasanFeatures].map(k => ({n: k.name, h: k.highCount, m: k.mediumCount, t: k.highCount+k.mediumCount})).filter(k => k.t > 0).sort((a, b) => b.t - a.t).slice(0, 10);
+            if(chartHighestInstance) chartHighestInstance.destroy();
+            chartHighestInstance = new Chart(document.getElementById('chartHighestNKWS').getContext('2d'), {
                 type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        { label: 'Medium Confidence', data: dataMedium, backgroundColor: '#ffa500' }, // Oranye di bawah
-                        { label: 'High Confidence', data: dataHigh, backgroundColor: '#ff4d4d' }       // Merah di atas
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { stacked: true },
-                        y: { stacked: true, beginAtZero: true }
-                    }
-                }
+                data: { labels: d.map(k=>k.n), datasets: [{label: 'Medium', data: d.map(k=>k.m), backgroundColor: '#ffa500'}, {label: 'High', data: d.map(k=>k.h), backgroundColor: '#ff4d4d'}] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: {stacked: true}, y: {stacked: true, beginAtZero: true} } }
             });
         }
 
         function renderWeeklyChart() {
-            const selectedUpt = document.getElementById('select-upt').value;
+            const upt = document.getElementById('select-upt').value;
             const ctx = document.getElementById('chartWeeklyUpt').getContext('2d');
             if (chartWeeklyInstance) chartWeeklyInstance.destroy();
-
-            // Jika UPT belum dipilih, kosongkan grafik atau berikan info
-            if (!selectedUpt) {
-                chartWeeklyInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: { labels: [], datasets: [] },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            title: { display: true, text: 'Silakan pilih Nama UPT (NUPT) terlebih dahulu di atas.' }
-                        }
-                    }
-                });
+            
+            if (!upt) {
+                chartWeeklyInstance = new Chart(ctx, { type: 'line', data: {labels:[], datasets:[]}, options: { responsive: true, maintainAspectRatio: false, plugins: { title: {display: true, text: 'Pilih UPT di atas.'} } } });
                 return;
             }
 
-            // Tentukan 7 hari terakhir (dari hari ini ke belakang)
-            const datesArr = [];
-            for (let i = 6; i >= 0; i--) {
-                const d = new Date();
-                d.setDate(d.getDate() - i);
-                datesArr.push(d.toISOString().split('T')[0]);
-            }
+            const dates = Array.from({length:7}, (_,i)=>{ const d=new Date(); d.setDate(d.getDate() - (6-i)); return d.toISOString().split('T')[0]; });
+            const filtered = globalHotspotRawList.filter(h => h.upt === upt);
+            const nkwsList = [...new Set(filtered.map(h => h.nkws))];
+            const colors = ['#d9534f', '#0275d8', '#f0ad4e', '#5cb85c', '#8c38d1', '#e67e22', '#1abc9c', '#e74c3c'];
 
-            // Filter data hotspot mentah berdasarkan UPT yang dipilih
-            const filteredByUpt = globalHotspotRawList.filter(h => h.upt === selectedUpt);
-            
-            // Dapatkan daftar unik NKWS yang ada pada UPT tersebut yang memiliki hotspot
-            const nkwsSet = [...new Set(filteredByUpt.map(h => h.nkws))];
-
-            // Buat dataset line chart (1 garis per 1 NKWS)
-            const colorPalette = ['#d9534f', '#0275d8', '#f0ad4e', '#5cb85c', '#8c38d1', '#e67e22', '#1abc9c', '#e74c3c', '#3498db', '#9b59b6'];
-            
-            const datasets = nkwsSet.map((nkwsName, index) => {
-                // Hitung jumlah hotspot per tanggal untuk NKWS ini
-                const countsPerDate = datesArr.map(dateStr => {
-                    return filteredByUpt.filter(h => h.nkws === nkwsName && h.date === dateStr).length;
-                });
-
-                const color = colorPalette[index % colorPalette.length];
-                return {
-                    label: nkwsName,
-                    data: countsPerDate,
-                    borderColor: color,
-                    backgroundColor: color,
-                    borderWidth: 2,
-                    tension: 0.1,
-                    fill: false
-                };
-            });
-
-            // Format label tanggal agar lebih ramah dibaca (contoh: DD MMM)
-            const formattedLabels = datesArr.map(dStr => {
-                const options = { day: '2-digit', month: 'short' };
-                return new Date(dStr).toLocaleDateString('id-ID', options);
-            });
+            const datasets = nkwsList.map((nkws, idx) => ({
+                label: nkws, data: dates.map(dt => filtered.filter(h => h.nkws === nkws && h.date === dt).length),
+                borderColor: colors[idx % colors.length], backgroundColor: colors[idx % colors.length], borderWidth: 2, fill: false, tension: 0.1
+            }));
 
             chartWeeklyInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: formattedLabels,
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: true, ticks: { stepSize: 1 } }
-                    },
-                    plugins: {
-                        legend: { position: 'bottom' }
-                    }
-                }
+                type: 'line', data: { labels: dates.map(d => new Date(d).toLocaleDateString('id-ID',{day:'2-digit', month:'short'})), datasets: datasets },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: {beginAtZero: true, ticks: {stepSize: 1}} } }
             });
         }
 
-        function updateWeeklyChart() {
-            renderWeeklyChart();
+        function updateWeeklyChart() { renderWeeklyChart(); }
+
+        fetch('kawasan.geojson').then(r => r.json()).then(data => {
+            kawasanGeoJSONData = data;
+            const l = L.geoJSON(data, {
+                style: { color: "#8c38d1", weight: 2, opacity: 0.9, fillColor: "#8c38d1", fillOpacity: 0.05 },
+                onEachFeature: (f, layer) => {
+                    if (f.properties) kawasanFeatures.push({ name: f.properties.NKWS || f.properties.nama || 'Kawasan', upt: f.properties.NUPT || f.properties.upt || '-', layer: layer, geoJsonFeature: f, highCount: 0, mediumCount: 0 });
+                }
+            });
+            kawasanLayer.addLayer(l);
+            isKawasanLoaded = true;
+            checkAllDataLoaded();
+            if (hotspotGeoJSONData) processHotspotLayers();
+        }).catch(e => console.error(e));
+
+        function loadHotspotData(url, fFrom = null) {
+            document.getElementById('cnt-total').innerText = "...";
+            fetch(url).then(r => r.json()).then(d => {
+                if(fFrom && d.features) {
+                    const sf = new Date(fFrom+"T00:00:00"), et = new Date(currentActiveDateRange.split(" s/d ")[1]+"T23:59:59");
+                    d.features = (d.features.features || d.features).filter(f => {
+                        const hd = new Date(f.properties.date_hotspot || f.properties.tanggal);
+                        return hd >= sf && hd <= et;
+                    });
+                }
+                hotspotGeoJSONData = d;
+                processHotspotLayers(fFrom);
+            }).catch(e => console.error(e));
         }
 
-        // MEMUAT KAWASAN GEOJSON
-        fetch('kawasan.geojson')
-            .then(response => response.json())
-            .then(data => {
-                kawasanGeoJSONData = data;
-                const layer = L.geoJSON(data, {
-                    style: { color: "#8c38d1", weight: 2, opacity: 0.9, fillColor: "#8c38d1", fillOpacity: 0.05 },
-                    onEachFeature: function (feature, layer) {
-                        if (feature.properties) {
-                            const namaKawasan = feature.properties.NKWS || feature.properties.nama || 'Kawasan';
-                            const namaUPT = feature.properties.NUPT || feature.properties.upt || '-';
-                            kawasanFeatures.push({
-                                name: namaKawasan,
-                                upt: namaUPT,
-                                layer: layer,
-                                geoJsonFeature: feature,
-                                highCount: 0,
-                                mediumCount: 0
-                            });
-                        }
-                    }
-                });
-                kawasanLayer.addLayer(layer);
-                renderDynamicLabels();
+        loadHotspotData('https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=custom&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=');
 
-                isKawasanLoaded = true;
-                checkAllDataLoaded(false);
-                if (hotspotGeoJSONData) processHotspotLayers();
-            })
-            .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
-
-        // MEMUAT DATA HOTSPOT API SIPONGI
-        function loadHotspotData(url, filterFrom = null, filterTo = null) {
-            document.getElementById('cnt-high').innerText = "Memuat...";
-            document.getElementById('cnt-medium').innerText = "Memuat...";
-            document.getElementById('cnt-total').innerText = "Memuat...";
-
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    if (filterFrom && filterTo && data.features) {
-                        const startDate = new Date(filterFrom + "T00:00:00");
-                        const endDate = new Date(filterTo + "T23:59:59");
-                        data.features = data.features.features || data.features.filter(feature => {
-                            const dateStr = feature.properties.date_hotspot || feature.properties.tanggal;
-                            if (!dateStr) return false;
-                            const hDate = new Date(dateStr);
-                            return hDate >= startDate && hDate <= endDate;
-                        });
-                    }
-                    hotspotGeoJSONData = data;
-                    processHotspotLayers(filterFrom);
-                })
-                .catch(err => console.error("Gagal memuat API Hotspot:", err));
-        }
-
-        const defaultApiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=custom&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
-        loadHotspotData(defaultApiUrl);
-
-        // LEGENDA PETA
         const legend = L.control({ position: 'bottomright' });
-        legend.onAdd = function (map) {
+        legend.onAdd = () => {
             const div = L.DomUtil.create('div', 'legend');
-            div.innerHTML = `
-                <h4>Legenda</h4>
-                <i style="background: #FF0000; border-radius: 50%;"></i> High Confidence<br>
-                <i style="background: #FFFF00; border-radius: 50%;"></i> Medium Confidence<br>
-                <i style="border: 2px solid #8c38d1; background: rgba(140,56,209,0.15);"></i> Batas Kawasan
-            `;
+            div.innerHTML = `<h4>Legenda</h4><i style="background: #FF0000; border-radius: 50%;"></i> High Confidence<br><i style="background: #FFFF00; border-radius: 50%;"></i> Medium Confidence<br><i style="border: 2px solid #8c38d1; background: rgba(140,56,209,0.15);"></i> Batas Kawasan`;
             return div;
         };
         legend.addTo(map);
 
-        L.control.layers({ "OpenStreetMap": osm, "Satelit (Esri)": esriSatelit, "Satelit (Google)": googleSatelit }, {
-            "Hotspot Dalam Kawasan": hotspotDalamLayer,
-            "Hotspot Luar Kawasan": hotspotLuarLayer,
-            "Batas Kawasan": kawasanLayer,
-            "Label Kawasan": labelKawasanGroup
-        }, { collapsed: false }).addTo(map);
+        L.control.layers({ "OpenStreetMap": osm, "Satelit (Esri)": esriSatelit, "Satelit (Google)": googleSatelit }, 
+        { "Hotspot Dalam": hotspotDalamLayer, "Hotspot Luar": hotspotLuarLayer, "Batas Kawasan": kawasanLayer, "Label": labelKawasanGroup }, { collapsed: false }).addTo(map);
     </script>
 </body>
 </html>
