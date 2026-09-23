@@ -268,7 +268,7 @@
             center: [-2.548926, 118.014863],
             zoom: 5,
             zoomControl: false, 
-            preferCanvas: true, // OPTIMASI PERFORMA: Render via Canvas
+            preferCanvas: true, 
             layers: [esriSatelit]
         });
 
@@ -318,10 +318,8 @@
                 </div>
                 <button onclick="goToCoordinate()"><i class="fa-solid fa-magnifying-glass"></i> Cari Lokasi</button>
             `;
-            
             L.DomEvent.disableClickPropagation(div);
             L.DomEvent.disableScrollPropagation(div);
-            
             return div;
         };
         searchCoordControl.addTo(map);
@@ -344,10 +342,7 @@
                 map.removeLayer(searchMarker);
             }
 
-            map.flyTo([lat, lng], 14, {
-                animate: true,
-                duration: 1.5
-            });
+            map.flyTo([lat, lng], 14, { animate: true, duration: 1.5 });
 
             searchMarker = L.marker([lat, lng]).addTo(map)
                 .bindPopup(`
@@ -373,10 +368,8 @@
                 </div>
                 <button onclick="applyDateFilter()"><i class="fa-solid fa-filter"></i> Terapkan Filter</button>
             `;
-            
             L.DomEvent.disableClickPropagation(div);
             L.DomEvent.disableScrollPropagation(div);
-            
             return div;
         };
         filterDateControl.addTo(map);
@@ -395,10 +388,10 @@
                 return;
             }
 
-            // Ubah URL API dengan parameter filter periode aktif
+            // Memuat ulang data dengan parameter rentang tanggal ke API SIPONGI
             const customApiUrl = `https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=true&from=${dateFrom}&to=${dateTo}&late=&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=`;
             
-            loadHotspotData(customApiUrl);
+            loadHotspotData(customApiUrl, dateFrom, dateTo);
         }
 
         L.control.zoom({ position: 'topleft' }).addTo(map);
@@ -426,7 +419,6 @@
         const kawasanLayer = L.layerGroup().addTo(map);
         const labelKawasanGroup = L.layerGroup().addTo(map);
 
-        // Variable Penyimpanan Data
         let kawasanGeoJSONData = null;
         let hotspotGeoJSONData = null;
         const MIN_ZOOM_LABEL = 9;
@@ -471,12 +463,7 @@
                                 iconAnchor: [0, 0]
                             });
 
-                            const labelMarker = L.marker(labelLatLng, { 
-                                icon: labelIcon, 
-                                interactive: false 
-                            });
-                            
-                            labelKawasanGroup.addLayer(labelMarker);
+                            labelKawasanGroup.addLayer(L.marker(labelLatLng, { icon: labelIcon, interactive: false }));
                         }
                     } catch (e) {
                         const fallbackPoint = turf.pointOnFeature(item.geoJsonFeature);
@@ -585,15 +572,14 @@
                 });
                 kawasanLayer.addLayer(layer);
                 renderDynamicLabels();
-                
                 calculateHotspotsInKawasan();
             })
             .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
 
         // -----------------------------------------------------------
-        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI
+        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI (DENGAN FILTER FRONTEND)
         // -----------------------------------------------------------
-        function loadHotspotData(url) {
+        function loadHotspotData(url, filterFrom = null, filterTo = null) {
             document.getElementById('cnt-high').innerText = "Memuat...";
             document.getElementById('cnt-medium').innerText = "Memuat...";
             document.getElementById('cnt-total').innerText = "Memuat...";
@@ -601,6 +587,16 @@
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
+                    // Filter tambahan sisi frontend untuk memastikan rentang tanggal akurat
+                    if (filterFrom && filterTo && data.features) {
+                        data.features = data.features.filter(feature => {
+                            const dateStr = feature.properties.date_hotspot; // Format umumnya 'YYYY-MM-DD ...'
+                            if (!dateStr) return false;
+                            const hotspotDate = dateStr.substring(0, 10);
+                            return hotspotDate >= filterFrom && hotspotDate <= filterTo;
+                        });
+                    }
+
                     hotspotGeoJSONData = data;
                     hotspotLayer.clearLayers();
 
@@ -653,7 +649,7 @@
                 .catch(err => console.error("Gagal memuat API Hotspot:", err));
         }
 
-        // Default Load (Default 24 jam terakhir / parameter awal)
+        // Default Load (Default 24 jam terakhir)
         const defaultApiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=24&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
         loadHotspotData(defaultApiUrl);
 
