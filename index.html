@@ -512,9 +512,16 @@
             let highCount = 0;
             let mediumCount = 0;
 
-            const kawasanWithBbox = kawasanGeoJSONData.features.map(f => ({
+            // Reset hitungan hotspot per kawasan
+            kawasanFeatures.forEach(item => {
+                item.highCount = 0;
+                item.mediumCount = 0;
+            });
+
+            const kawasanWithBbox = kawasanGeoJSONData.features.map((f, index) => ({
                 feature: f,
-                bbox: turf.bbox(f)
+                bbox: turf.bbox(f),
+                featureIndex: index
             }));
 
             hotspotGeoJSONData.features.forEach(hotspot => {
@@ -523,6 +530,7 @@
 
                 const ptCoords = hotspot.geometry.coordinates;
                 let inside = false;
+                let matchedKawasanIndex = -1;
 
                 for (let i = 0; i < kawasanWithBbox.length; i++) {
                     const item = kawasanWithBbox[i];
@@ -532,6 +540,7 @@
                         try {
                             if (turf.booleanPointInPolygon(hotspot, item.feature)) {
                                 inside = true;
+                                matchedKawasanIndex = item.featureIndex;
                                 break;
                             }
                         } catch (err) {
@@ -568,18 +577,40 @@
 
                 if (inside) {
                     hotspotDalamLayer.addLayer(marker);
-                    if (conf === 'high') highCount++;
-                    if (conf === 'medium') mediumCount++;
+                    if (conf === 'high') {
+                        highCount++;
+                        kawasanFeatures[matchedKawasanIndex].highCount++;
+                    }
+                    if (conf === 'medium') {
+                        mediumCount++;
+                        kawasanFeatures[matchedKawasanIndex].mediumCount++;
+                    }
                 } else {
                     hotspotLuarLayer.addLayer(marker);
                 }
             });
 
+            // Perbarui Popup untuk Setiap Kawasan Berdasarkan Hitungan Terbaru
+            kawasanFeatures.forEach(item => {
+                const totalKawasan = item.highCount + item.mediumCount;
+                const kawasanPopup = `
+                    <div style="font-size: 13px; min-width: 180px;">
+                        <h4 style="margin: 0 0 5px 0; color: #8c38d1; border-bottom: 1px solid #ddd; padding-bottom: 3px;">${item.name || 'Kawasan Konservasi'}</h4>
+                        <b>Rekapitulasi Hotspot:</b><br>
+                        - High Confidence: <span style="color:red; font-weight:bold;">${item.highCount}</span><br>
+                        - Medium Confidence: <span style="color:#d99b00; font-weight:bold;">${item.mediumCount}</span><br>
+                        <hr style="border:0; border-top:1px dashed #ccc; margin:5px 0;">
+                        <b>Total Hotspot:</b> <span style="font-weight:bold; color:#111;">${totalKawasan} Titik</span>
+                    </div>
+                `;
+                item.layer.bindPopup(kawasanPopup);
+            });
+
+            // Perbarui Widget Statistik Kiri Bawah
             document.getElementById('cnt-high').innerText = highCount;
             document.getElementById('cnt-medium').innerText = mediumCount;
             document.getElementById('cnt-total').innerText = highCount + mediumCount;
 
-            // Auto Zoom hanya dijalankan ketika filter tanggal diterapkan oleh pengguna
             if (filterFrom) {
                 const combinedGroup = L.featureGroup([hotspotDalamLayer, hotspotLuarLayer]);
                 const bounds = combinedGroup.getBounds();
@@ -613,19 +644,24 @@
                     },
                     onEachFeature: function (feature, layer) {
                         if (feature.properties) {
-                            let popupText = "<b>Batas Kawasan</b><br>";
-                            for (let key in feature.properties) {
-                                popupText += `<b>${key}:</b> ${feature.properties[key]}<br>`;
-                            }
-                            layer.bindPopup(popupText);
+                            const namaKawasan = feature.properties.NKWS || feature.properties.nama || 'Kawasan Konservasi';
+                            
+                            // Daftarkan ke array kawasanFeatures
+                            kawasanFeatures.push({
+                                name: namaKawasan,
+                                layer: layer,
+                                geoJsonFeature: feature,
+                                highCount: 0,
+                                mediumCount: 0
+                            });
 
-                            if (feature.properties.NKWS) {
-                                kawasanFeatures.push({
-                                    name: feature.properties.NKWS,
-                                    layer: layer,
-                                    geoJsonFeature: feature
-                                });
-                            }
+                            // Popup default awal
+                            layer.bindPopup(`
+                                <div style="font-size: 13px;">
+                                    <h4 style="margin: 0 0 5px 0; color: #8c38d1;">${namaKawasan}</h4>
+                                    <i>Memuat data hotspot...</i>
+                                </div>
+                            `);
                         }
                     }
                 });
@@ -639,7 +675,7 @@
             .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
 
         // -----------------------------------------------------------
-        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI (DEFAULT TANPA FILTER)
+        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI
         // -----------------------------------------------------------
         function loadHotspotData(url, filterFrom = null, filterTo = null) {
             document.getElementById('cnt-high').innerText = "Memuat...";
@@ -674,7 +710,6 @@
                 .catch(err => console.error("Gagal memuat API Hotspot:", err));
         }
 
-        // DEFAULT PERTAMA KALI: Menggunakan filterperiode=false tanpa parameter late/tanggal agar menampilkan seluruh hotspot
         const defaultApiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
         loadHotspotData(defaultApiUrl);
 
@@ -687,7 +722,7 @@
             div.innerHTML = `
                 <h4>Legenda</h4>
                 <i style="background: #FF0000; border-radius: 50%; border: 1.5px solid #000;"></i> High Confidence<br>
-                <i style="background: #FFFF00; border-radius: 50%; border: 1px solid #000;"></i> Medium Confidence<br>
+                <i style="background: #FFFF00; border-radius: 50%; border: 1.0px solid #000;"></i> Medium Confidence<br>
                 <i style="border: 2px solid #8c38d1; background: rgba(140,56,209,0.15);"></i> Batas Kawasan
             `;
             return div;
