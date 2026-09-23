@@ -577,7 +577,7 @@
             .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
 
         // -----------------------------------------------------------
-        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI (DENGAN FILTER FRONTEND)
+        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI (DENGAN FILTER FRONTEND YANG DISEMPURNAKAN)
         // -----------------------------------------------------------
         function loadHotspotData(url, filterFrom = null, filterTo = null) {
             document.getElementById('cnt-high').innerText = "Memuat...";
@@ -587,13 +587,27 @@
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
-                    // Filter tambahan sisi frontend untuk memastikan rentang tanggal akurat
+                    // Filter tambahan sisi frontend yang disempurnakan
                     if (filterFrom && filterTo && data.features) {
+                        // Ubah tanggal filter menjadi objek Date (mulai jam 00:00:00 sampai 23:59:59)
+                        const startDate = new Date(filterFrom + "T00:00:00");
+                        const endDate = new Date(filterTo + "T23:59:59");
+
                         data.features = data.features.filter(feature => {
-                            const dateStr = feature.properties.date_hotspot; // Format umumnya 'YYYY-MM-DD ...'
+                            const dateStr = feature.properties.date_hotspot || feature.properties.tanggal || feature.properties.created_at;
                             if (!dateStr) return false;
-                            const hotspotDate = dateStr.substring(0, 10);
-                            return hotspotDate >= filterFrom && hotspotDate <= filterTo;
+                            
+                            // Normalisasi string tanggal dari API menjadi objek Date
+                            const hotspotDate = new Date(dateStr);
+                            
+                            // Validasi apakah tanggal valid, lalu bandingkan
+                            if (isNaN(hotspotDate.getTime())) {
+                                // Fallback jika format string berantakan, ambil 10 karakter pertama (YYYY-MM-DD)
+                                const cleanDateStr = dateStr.substring(0, 10);
+                                return cleanDateStr >= filterFrom && cleanDateStr <= filterTo;
+                            }
+
+                            return hotspotDate >= startDate && hotspotDate <= endDate;
                         });
                     }
 
@@ -648,10 +662,6 @@
                 })
                 .catch(err => console.error("Gagal memuat API Hotspot:", err));
         }
-
-        // Default Load (Default 24 jam terakhir)
-        const defaultApiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=24&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
-        loadHotspotData(defaultApiUrl);
 
         // -----------------------------------------------------------
         // 7. LEGENDA PETA
