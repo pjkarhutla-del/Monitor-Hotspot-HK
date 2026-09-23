@@ -290,6 +290,9 @@
     <script src="https://npmcdn.com/flatpickr/dist/l10n/id.js"></script>
 
     <script>
+        // Variabel Global untuk Menyimpan Rentang Tanggal Aktif
+        let currentActiveDateRange = "Semua / Belum Difilter";
+
         // -----------------------------------------------------------
         // FUNGSI MENAMPILKAN TOAST POP-UP
         // -----------------------------------------------------------
@@ -300,7 +303,7 @@
             
             setTimeout(() => {
                 toast.classList.remove('show');
-            }, 3500); // Hilang otomatis setelah 3.5 detik
+            }, 3500); 
         }
 
         // 1. Inisialisasi Peta & Basemap dengan Optimasi Canvas
@@ -449,6 +452,9 @@
             const dateFrom = flatpickr.formatDate(selectedDates[0], "Y-m-d");
             const dateTo = flatpickr.formatDate(selectedDates[1], "Y-m-d");
 
+            // Simpan format teks untuk ditampilkan di pop-up kawasan
+            currentActiveDateRange = `${dateFrom} s/d ${dateTo}`;
+
             const customApiUrl = `https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=true&from=${dateFrom}&to=${dateTo}&late=&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=`;
             
             loadHotspotData(customApiUrl, dateFrom, dateTo);
@@ -485,7 +491,6 @@
         const MIN_ZOOM_LABEL = 9;
         let kawasanFeatures = [];
 
-        // Status untuk memastikan notifikasi sukses muncul setelah kedua data (Kawasan & Hotspot) siap
         let isKawasanLoaded = false;
         let isHotspotLoaded = false;
 
@@ -560,6 +565,30 @@
         }
 
         map.on('move zoom', renderDynamicLabels);
+
+        // -----------------------------------------------------------
+        // FUNGSI MEMPERBARUI POP-UP KAWASAN (MENGANDUNG NUPT & RENTANG TANGGAL)
+        // -----------------------------------------------------------
+        function updateKawasanPopups() {
+            kawasanFeatures.forEach(item => {
+                const totalKawasan = item.highCount + item.mediumCount;
+                const kawasanPopup = `
+                    <div style="font-size: 13px; min-width: 200px;">
+                        <h4 style="margin: 0 0 4px 0; color: #8c38d1; border-bottom: 1px solid #ddd; padding-bottom: 3px;">${item.name || 'Kawasan Konservasi'}</h4>
+                        <div style="margin-bottom: 6px; font-size: 11.5px; color: #555;">
+                            <b>UPT:</b> ${item.upt || '-'}<br>
+                            <b>Periode:</b> ${currentActiveDateRange}
+                        </div>
+                        <b>Rekapitulasi Hotspot:</b><br>
+                        - High Confidence: <span style="color:red; font-weight:bold;">${item.highCount}</span><br>
+                        - Medium Confidence: <span style="color:#d99b00; font-weight:bold;">${item.mediumCount}</span><br>
+                        <hr style="border:0; border-top:1px dashed #ccc; margin:5px 0;">
+                        <b>Total Hotspot:</b> <span style="font-weight:bold; color:#111;">${totalKawasan} Titik</span>
+                    </div>
+                `;
+                item.layer.bindPopup(kawasanPopup);
+            });
+        }
 
         // -----------------------------------------------------------
         // FUNGSI ANALISIS SPASIAL & PEMISAHAN LAYER HOTSPOT
@@ -650,20 +679,8 @@
                 }
             });
 
-            kawasanFeatures.forEach(item => {
-                const totalKawasan = item.highCount + item.mediumCount;
-                const kawasanPopup = `
-                    <div style="font-size: 13px; min-width: 180px;">
-                        <h4 style="margin: 0 0 5px 0; color: #8c38d1; border-bottom: 1px solid #ddd; padding-bottom: 3px;">${item.name || 'Kawasan Konservasi'}</h4>
-                        <b>Rekapitulasi Hotspot:</b><br>
-                        - High Confidence: <span style="color:red; font-weight:bold;">${item.highCount}</span><br>
-                        - Medium Confidence: <span style="color:#d99b00; font-weight:bold;">${item.mediumCount}</span><br>
-                        <hr style="border:0; border-top:1px dashed #ccc; margin:5px 0;">
-                        <b>Total Hotspot:</b> <span style="font-weight:bold; color:#111;">${totalKawasan} Titik</span>
-                    </div>
-                `;
-                item.layer.bindPopup(kawasanPopup);
-            });
+            // Update isi pop-up kawasan setelah rekapitulasi dihitung
+            updateKawasanPopups();
 
             document.getElementById('cnt-high').innerText = highCount;
             document.getElementById('cnt-medium').innerText = mediumCount;
@@ -706,9 +723,11 @@
                     onEachFeature: function (feature, layer) {
                         if (feature.properties) {
                             const namaKawasan = feature.properties.NKWS || feature.properties.nama || 'Kawasan Konservasi';
+                            const namaUPT = feature.properties.NUPT || feature.properties.upt || '-';
                             
                             kawasanFeatures.push({
                                 name: namaKawasan,
+                                upt: namaUPT,
                                 layer: layer,
                                 geoJsonFeature: feature,
                                 highCount: 0,
@@ -718,6 +737,7 @@
                             layer.bindPopup(`
                                 <div style="font-size: 13px;">
                                     <h4 style="margin: 0 0 5px 0; color: #8c38d1;">${namaKawasan}</h4>
+                                    <b>UPT:</b> ${namaUPT}<br>
                                     <i>Memuat data hotspot...</i>
                                 </div>
                             `);
