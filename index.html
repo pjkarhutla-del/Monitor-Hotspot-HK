@@ -586,23 +586,25 @@
             fetch(weeklyApiUrl).then(r => r.json()).then(data => {
                 const features = data.features ? (data.features.features || data.features) : [];
                 weeklyHotspotRawList = [];
-
-                // Tentukan batas 7 hari ke belakang
+        
                 const today = new Date();
                 const pastWeek = new Date();
                 pastWeek.setDate(today.getDate() - 7);
-
+        
                 const kawasanBbox = kawasanGeoJSONData.features.map((f, i) => ({ feature: f, bbox: turf.bbox(f), i: i }));
-
+        
                 features.forEach(hotspot => {
                     const conf = (hotspot.properties.confidence_level || '').toLowerCase();
                     if (conf !== 'high' && conf !== 'medium') return;
-
+        
                     const p = hotspot.properties;
                     const dateStr = p.date_hotspot || p.tanggal;
                     if (!dateStr) return;
-
-                    const hDate = new Date(dateStr);
+        
+                    // Perbaikan parsing tanggal agar aman dari spasi atau format jam
+                    const cleanDateStr = dateStr.replace(' ', 'T');
+                    const hDate = new Date(cleanDateStr);
+                    
                     if (hDate >= pastWeek && hDate <= today) {
                         const pt = hotspot.geometry.coordinates;
                         for (let k of kawasanBbox) {
@@ -613,7 +615,7 @@
                                         weeklyHotspotRawList.push({
                                             nkws: kItem.name,
                                             upt: kItem.upt,
-                                            date: dateStr.split(' ')[0]
+                                            date: cleanDateStr.split('T')[0] // Format YYYY-MM-DD
                                         });
                                         break;
                                     }
@@ -624,7 +626,7 @@
                 });
             }).catch(e => console.error("Gagal memuat data weekly chart:", e));
         }
-
+        
         fetch('kawasan.geojson').then(r => r.json()).then(data => {
             kawasanGeoJSONData = data;
             const l = L.geoJSON(data, {
