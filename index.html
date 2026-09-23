@@ -269,7 +269,6 @@
                 <button onclick="goToCoordinate()"><i class="fa-solid fa-magnifying-glass"></i> Cari Lokasi</button>
             `;
             
-            // Cegah interaksi di widget mengganggu peta di belakangnya
             L.DomEvent.disableClickPropagation(div);
             L.DomEvent.disableScrollPropagation(div);
             
@@ -414,12 +413,10 @@
         function calculateHotspotsInKawasan() {
             if (!kawasanGeoJSONData || !hotspotGeoJSONData) return;
 
-            // Jalankan via setTimeout agar tidak memblokir UI browser (UI anti-freeze)
             setTimeout(() => {
                 let highCount = 0;
                 let mediumCount = 0;
 
-                // Pre-compute BBOX untuk seluruh kawasan
                 const kawasanWithBbox = kawasanGeoJSONData.features.map(f => ({
                     feature: f,
                     bbox: turf.bbox(f)
@@ -436,9 +433,7 @@
                         const item = kawasanWithBbox[i];
                         const b = item.bbox;
 
-                        // Quick Filter: Cek BBOX dulu (Sangat Cepat)
                         if (ptCoords[0] >= b[0] && ptCoords[0] <= b[2] && ptCoords[1] >= b[1] && ptCoords[1] <= b[3]) {
-                            // Jika ada di dalam BBOX, baru cek Point in Polygon (Presisi)
                             try {
                                 if (turf.booleanPointInPolygon(hotspot, item.feature)) {
                                     inside = true;
@@ -456,7 +451,6 @@
                     }
                 });
 
-                // Update UI
                 document.getElementById('cnt-high').innerText = highCount;
                 document.getElementById('cnt-medium').innerText = mediumCount;
                 document.getElementById('cnt-total').innerText = highCount + mediumCount;
@@ -505,13 +499,38 @@
             .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
 
         // -----------------------------------------------------------
-        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI (CANVAS RENDERER)
+        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI (DENGAN FILTER TANGGAL TERKINI & 1 HARI SEBELUMNYA)
         // -----------------------------------------------------------
         const apiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=24&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
 
         fetch(apiUrl)
             .then(response => response.json())
             .then(data => {
+                // Buat rentang tanggal (Hari Ini dan Kemarin berdasarkan properti date_hotspot)
+                const today = new Date();
+                const yesterday = new Date(today);
+                yesterday.setDate(today.getDate() - 1);
+
+                // Format ke string YYYY-MM-DD untuk pencocokan aman
+                const formatDateStr = (d) => {
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    return `${y}-${m}-${day}`;
+                };
+
+                const todayStr = formatDateStr(today);
+                const yesterdayStr = formatDateStr(yesterday);
+
+                // Filter fitur GeoJSON hanya untuk tanggal terkini dan 1 hari sebelumnya
+                data.features = data.features.filter(feature => {
+                    const dateHotspot = feature.properties.date_hotspot;
+                    if (!dateHotspot) return false;
+                    // Mengambil bagian tanggal saja (YYYY-MM-DD) dari string date_hotspot
+                    const hotspotDateOnly = dateHotspot.split(' ')[0];
+                    return hotspotDateOnly === todayStr || hotspotDateOnly === yesterdayStr;
+                });
+
                 hotspotGeoJSONData = data;
 
                 L.geoJSON(data, {
@@ -522,7 +541,6 @@
                     pointToLayer: function (feature, latlng) {
                         const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
 
-                        // Menggunakan CircleMarker berbasis Canvas (Ringan & Cepat)
                         if (conf === 'high') {
                             return L.circleMarker(latlng, {
                                 radius: 6,
