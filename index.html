@@ -273,7 +273,7 @@
         });
 
         // -----------------------------------------------------------
-        // 2. FUNGSI UNTUK MENGAMBIL WAKTU REAL-TIME DILAKUKAN PROSES
+        // 2. FUNGSI WAKTU RUNNING
         // -----------------------------------------------------------
         function getFormattedRunTime() {
             const now = new Date();
@@ -286,9 +286,6 @@
             return `${tanggal} | ${jam}:${menit}:${detik} WIB`;
         }
 
-        // -----------------------------------------------------------
-        // 3. JUDUL PETA DENGAN TANGGAL & JAM DIPROSES
-        // -----------------------------------------------------------
         const titleControl = L.control({ position: 'topleft' });
         titleControl.onAdd = function (map) {
             const div = L.DomUtil.create('div', 'map-title-box');
@@ -388,7 +385,6 @@
                 return;
             }
 
-            // Memuat ulang data dengan parameter rentang tanggal ke API SIPONGI
             const customApiUrl = `https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=true&from=${dateFrom}&to=${dateTo}&late=&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=`;
             
             loadHotspotData(customApiUrl, dateFrom, dateTo);
@@ -414,8 +410,9 @@
         };
         summaryControl.addTo(map);
 
-        // Layer Groups
-        const hotspotLayer = L.layerGroup().addTo(map);
+        // Layer Groups yang Dipisah
+        const hotspotDalamLayer = L.layerGroup().addTo(map);
+        const hotspotLuarLayer = L.layerGroup().addTo(map);
         const kawasanLayer = L.layerGroup().addTo(map);
         const labelKawasanGroup = L.layerGroup().addTo(map);
 
@@ -425,7 +422,7 @@
         let kawasanFeatures = [];
 
         // -----------------------------------------------------------
-        // 4. LOGIKA LABEL DINAMIS DENGAN TURF.JS
+        // LABEL DINAMIS DENGAN TURF.JS
         // -----------------------------------------------------------
         function renderDynamicLabels() {
             labelKawasanGroup.clearLayers();
@@ -487,53 +484,101 @@
         map.on('move zoom', renderDynamicLabels);
 
         // -----------------------------------------------------------
-        // FUNGSI SPASIAL TER-OPTIMASI: BBOX PRE-FILTERING + ASYNC
+        // FUNGSI UTAMA ANALISIS SPASIAL & PEMISAHAN LAYER HOTSPOT
         // -----------------------------------------------------------
-        function calculateHotspotsInKawasan() {
+        function processHotspotLayers(filterFrom = null) {
             if (!kawasanGeoJSONData || !hotspotGeoJSONData) return;
 
-            setTimeout(() => {
-                let highCount = 0;
-                let mediumCount = 0;
+            hotspotDalamLayer.clearLayers();
+            hotspotLuarLayer.clearLayers();
 
-                const kawasanWithBbox = kawasanGeoJSONData.features.map(f => ({
-                    feature: f,
-                    bbox: turf.bbox(f)
-                }));
+            let highCount = 0;
+            let mediumCount = 0;
 
-                hotspotGeoJSONData.features.forEach(hotspot => {
-                    const conf = hotspot.properties.confidence_level ? hotspot.properties.confidence_level.toLowerCase() : '';
-                    if (conf !== 'high' && conf !== 'medium') return;
+            const kawasanWithBbox = kawasanGeoJSONData.features.map(f => ({
+                feature: f,
+                bbox: turf.bbox(f)
+            }));
 
-                    const ptCoords = hotspot.geometry.coordinates;
-                    let inside = false;
+            hotspotGeoJSONData.features.forEach(hotspot => {
+                const conf = hotspot.properties.confidence_level ? hotspot.properties.confidence_level.toLowerCase() : '';
+                if (conf !== 'high' && conf !== 'medium') return;
 
-                    for (let i = 0; i < kawasanWithBbox.length; i++) {
-                        const item = kawasanWithBbox[i];
-                        const b = item.bbox;
+                const ptCoords = hotspot.geometry.coordinates;
+                let inside = false;
 
-                        if (ptCoords[0] >= b[0] && ptCoords[0] <= b[2] && ptCoords[1] >= b[1] && ptCoords[1] <= b[3]) {
-                            try {
-                                if (turf.booleanPointInPolygon(hotspot, item.feature)) {
-                                    inside = true;
-                                    break;
-                                }
-                            } catch (err) {
-                                console.warn("Geometri invalid:", err);
+                for (let i = 0; i < kawasanWithBbox.length; i++) {
+                    const item = kawasanWithBbox[i];
+                    const b = item.bbox;
+
+                    if (ptCoords[0] >= b[0] && ptCoords[0] <= b[2] && ptCoords[1] >= b[1] && ptCoords[1] <= b[3]) {
+                        try {
+                            if (turf.booleanPointInPolygon(hotspot, item.feature)) {
+                                inside = true;
+                                break;
                             }
+                        } catch (err) {
+                            console.warn("Geometri invalid:", err);
                         }
                     }
+                }
 
-                    if (inside) {
-                        if (conf === 'high') highCount++;
-                        if (conf === 'medium') mediumCount++;
-                    }
+                // Tentukan warna marker berdasarkan tingkat confidence
+                let fillColor = (conf === 'high') ? "#FF0000" : "#FFFF00";
+                let radiusSize = (conf === 'high') ? 6 : 4;
+                let weightSize = (conf === 'high') ? 1.5 : 1;
+
+                const marker = L.circleMarker([ptCoords[1], ptCoords[0]], {
+                    radius: radiusSize,
+                    fillColor: fillColor,
+                    color: "#000000",
+                    weight: weightSize,
+                    opacity: 1,
+                    fillOpacity: 0.95
                 });
 
-                document.getElementById('cnt-high').innerText = highCount;
-                document.getElementById('cnt-medium').innerText = mediumCount;
-                document.getElementById('cnt-total').innerText = highCount + mediumCount;
-            }, 100);
+                const p = hotspot.properties;
+                const popupContent = `
+                    <div style="font-size: 13px;">
+                        <h4 style="margin: 0 0 5px 0; color: #d9534f;">Hotspot ${p.sumber || ''} (${inside ? 'Dalam Kawasan' : 'Luar Kawasan'})</h4>
+                        <b>Waktu:</b> ${p.date_hotspot || '-'}<br>
+                        <b>Confidence Level:</b> <span style="font-weight:bold; color:${p.confidence_level === 'high' ? 'red' : 'orange'};">${p.confidence_level} (${p.confidence})</span><br>
+                        <b>Lokasi:</b> Desa ${p.desa || '-'}, Kec. ${p.kecamatan || '-'}, ${p.kabkota || '-'}, ${p.nama_provinsi || '-'}<br>
+                        <b>Koordinat:</b> ${p.lat}, ${p.long}<br>
+                        ${p.route_create ? `<a href="${p.route_create}" target="_blank" style="display:inline-block; margin-top:8px; background:#0275d8; color:white; padding:3px 8px; text-decoration:none; border-radius:3px;">Form Groundcheck</a>` : ''}
+                    </div>
+                `;
+                marker.bindPopup(popupContent);
+
+                // Pisahkan penempatan ke layer masing-masing
+                if (inside) {
+                    hotspotDalamLayer.addLayer(marker);
+                    if (conf === 'high') highCount++;
+                    if (conf === 'medium') mediumCount++;
+                } else {
+                    hotspotLuarLayer.addLayer(marker);
+                }
+            });
+
+            // Perbarui Widget Statistik Kiri Bawah
+            document.getElementById('cnt-high').innerText = highCount;
+            document.getElementById('cnt-medium').innerText = mediumCount;
+            document.getElementById('cnt-total').innerText = highCount + mediumCount;
+
+            // Auto Zoom jika menggunakan filter tanggal
+            if (filterFrom) {
+                const combinedGroup = L.featureGroup([hotspotDalamLayer, hotspotLuarLayer]);
+                const bounds = combinedGroup.getBounds();
+                if (bounds.isValid()) {
+                    map.flyToBounds(bounds, {
+                        padding: [50, 50],
+                        maxZoom: 12,
+                        duration: 1.5
+                    });
+                } else {
+                    alert("Tidak ditemukan titik hotspot pada rentang tanggal tersebut.");
+                }
+            }
         }
 
         // -----------------------------------------------------------
@@ -572,12 +617,15 @@
                 });
                 kawasanLayer.addLayer(layer);
                 renderDynamicLabels();
-                calculateHotspotsInKawasan();
+
+                if (hotspotGeoJSONData) {
+                    processHotspotLayers();
+                }
             })
             .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
 
         // -----------------------------------------------------------
-        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI (DENGAN AUTO-ZOOM PETA)
+        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI
         // -----------------------------------------------------------
         function loadHotspotData(url, filterFrom = null, filterTo = null) {
             document.getElementById('cnt-high').innerText = "Memuat...";
@@ -587,7 +635,6 @@
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
-                    // Filter tambahan sisi frontend
                     if (filterFrom && filterTo && data.features) {
                         const startDate = new Date(filterFrom + "T00:00:00");
                         const endDate = new Date(filterTo + "T23:59:59");
@@ -608,74 +655,13 @@
                     }
 
                     hotspotGeoJSONData = data;
-                    hotspotLayer.clearLayers();
-
-                    // Buat layer GeoJSON untuk hotspot yang memenuhi syarat confidence
-                    const geojsonLayer = L.geoJSON(data, {
-                        filter: function(feature) {
-                            const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
-                            return conf === 'medium' || conf === 'high';
-                        },
-                        pointToLayer: function (feature, latlng) {
-                            const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
-
-                            if (conf === 'high') {
-                                return L.circleMarker(latlng, {
-                                    radius: 6,
-                                    fillColor: "#FF0000",
-                                    color: "#000000",
-                                    weight: 1.5,
-                                    opacity: 1,
-                                    fillOpacity: 0.95
-                                });
-                            } else if (conf === 'medium') {
-                                return L.circleMarker(latlng, {
-                                    radius: 4,
-                                    fillColor: "#FFFF00",
-                                    color: "#000000",
-                                    weight: 1,
-                                    opacity: 1,
-                                    fillOpacity: 0.9
-                                });
-                            }
-                        },
-                        onEachFeature: function (feature, layer) {
-                            const p = feature.properties;
-                            const popupContent = `
-                                <div style="font-size: 13px;">
-                                    <h4 style="margin: 0 0 5px 0; color: #d9534f;">Hotspot ${p.sumber || ''}</h4>
-                                    <b>Waktu:</b> ${p.date_hotspot || '-'}<br>
-                                    <b>Confidence Level:</b> <span style="font-weight:bold; color:${p.confidence_level === 'high' ? 'red' : 'orange'};">${p.confidence_level} (${p.confidence})</span><br>
-                                    <b>Lokasi:</b> Desa ${p.desa || '-'}, Kec. ${p.kecamatan || '-'}, ${p.kabkota || '-'}, ${p.nama_provinsi || '-'}<br>
-                                    <b>Koordinat:</b> ${p.lat}, ${p.long}<br>
-                                    ${p.route_create ? `<a href="${p.route_create}" target="_blank" style="display:inline-block; margin-top:8px; background:#0275d8; color:white; padding:3px 8px; text-decoration:none; border-radius:3px;">Form Groundcheck</a>` : ''}
-                                </div>
-                            `;
-                            layer.bindPopup(popupContent);
-                        }
-                    });
-
-                    // Masukkan ke dalam hotspotLayer peta
-                    geojsonLayer.addTo(hotspotLayer);
-
-                    // FITUR BARU: Otomatis zoom peta ke area titik hotspot hasil filter
-                    if (filterFrom && filterTo) {
-                        const bounds = geojsonLayer.getBounds();
-                        if (bounds.isValid()) {
-                            map.flyToBounds(bounds, {
-                                padding: [50, 50],
-                                maxZoom: 12, // Batasi agar tidak terlalu dekat jika titiknya sedikit
-                                duration: 1.5
-                            });
-                        } else {
-                            alert("Tidak ditemukan titik hotspot pada rentang tanggal tersebut.");
-                        }
-                    }
-
-                    calculateHotspotsInKawasan();
+                    processHotspotLayers(filterFrom);
                 })
                 .catch(err => console.error("Gagal memuat API Hotspot:", err));
         }
+
+        const defaultApiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=24&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
+        loadHotspotData(defaultApiUrl);
 
         // -----------------------------------------------------------
         // 7. LEGENDA PETA
@@ -685,8 +671,8 @@
             const div = L.DomUtil.create('div', 'legend');
             div.innerHTML = `
                 <h4>Legenda</h4>
-                <i style="background: #FF0000; border-radius: 50%; border: 1.5px solid #000;"></i> High<br>
-                <i style="background: #FFFF00; border-radius: 50%; border: 1px solid #000;"></i> Medium<br>
+                <i style="background: #FF0000; border-radius: 50%; border: 1.5px solid #000;"></i> High Confidence<br>
+                <i style="background: #FFFF00; border-radius: 50%; border: 1px solid #000;"></i> Medium Confidence<br>
                 <i style="border: 2px solid #8c38d1; background: rgba(140,56,209,0.15);"></i> Batas Kawasan
             `;
             return div;
@@ -694,7 +680,7 @@
         legend.addTo(map);
 
         // -----------------------------------------------------------
-        // 8. KONTROL LAYER BASEMAP & OVERLAY
+        // 8. KONTROL LAYER BASEMAP & OVERLAY (DIPISAH)
         // -----------------------------------------------------------
         const baseMaps = {
             "OpenStreetMap": osm,
@@ -703,7 +689,8 @@
         };
 
         const overlayMaps = {
-            "Titik Hotspot": hotspotLayer,
+            "Hotspot Dalam Kawasan": hotspotDalamLayer,
+            "Hotspot Luar Kawasan": hotspotLuarLayer,
             "Batas Kawasan": kawasanLayer,
             "Label Kawasan": labelKawasanGroup
         };
