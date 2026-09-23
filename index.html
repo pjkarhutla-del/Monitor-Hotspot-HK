@@ -112,7 +112,7 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.25);
             padding: 12px;
             width: 250px;
-            display: none; /* Default disembunyikan */
+            display: none; 
             transition: all 0.3s ease;
         }
         .sidebar-pane {
@@ -130,7 +130,6 @@
             padding-bottom: 5px;
         }
 
-        /* Form di dalam Panel */
         .input-group {
             display: flex;
             gap: 5px;
@@ -147,7 +146,6 @@
         }
         .input-full { margin-bottom: 8px; text-align: center; cursor: pointer; }
         
-        /* Tombol Aksi */
         .btn-action {
             width: 100%;
             padding: 7px;
@@ -181,7 +179,7 @@
         .hotspot-summary-box td { padding: 2px 0; font-weight: 600; }
         .hotspot-summary-box td.val { text-align: right; font-weight: 800; }
 
-        /* --- MODAL STATISTIK & GRAFIK (TETAP SAMA) --- */
+        /* --- MODAL STATISTIK & GRAFIK --- */
         .stat-modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100000; display: none; justify-content: center; align-items: center;
         }
@@ -274,7 +272,8 @@
         let currentActiveDateRange = "Semua Periode / Belum Difilter";
         let chartHighestInstance = null;
         let chartWeeklyInstance = null;
-        let globalHotspotRawList = [];
+        let globalHotspotRawList = [];      // Untuk peta (mengikuti filter)
+        let weeklyHotspotRawList = [];      // Khusus untuk grafik mingguan (7 hari terakhir mandiri)
 
         function showToast(message) {
             const toast = document.getElementById('success-toast');
@@ -327,12 +326,11 @@
         };
         titleControl.addTo(map);
 
-        // --- MENU SIDEBAR TAB (GABUNGAN KOORDINAT, TANGGAL, STATISTIK) ---
+        // --- MENU SIDEBAR TAB ---
         const sidebarControl = L.control({ position: 'topleft' });
         sidebarControl.onAdd = function () {
             const wrapper = L.DomUtil.create('div', 'sidebar-wrapper');
             wrapper.innerHTML = `
-                <!-- Kolom Icon -->
                 <div class="sidebar-tabs">
                     <button class="tab-icon" id="btn-tab-search" onclick="toggleSidebarTab('search')" title="Cari Koordinat">
                         <i class="fa-solid fa-location-dot" style="color:#0275d8"></i>
@@ -345,10 +343,7 @@
                     </button>
                 </div>
                 
-                <!-- Box Konten Sebelah Icon -->
                 <div class="sidebar-content" id="sidebar-content">
-                    
-                    <!-- Form Pencarian Koordinat -->
                     <div id="pane-search" class="sidebar-pane">
                         <h4><i class="fa-solid fa-location-dot"></i> Cari Koordinat</h4>
                         <div class="input-group">
@@ -358,20 +353,17 @@
                         <button class="btn-action btn-blue" onclick="goToCoordinate()"><i class="fa-solid fa-magnifying-glass"></i> Cari Lokasi</button>
                     </div>
 
-                    <!-- Form Filter Tanggal -->
                     <div id="pane-filter" class="sidebar-pane">
                         <h4><i class="fa-solid fa-calendar-days"></i> Filter Tanggal</h4>
                         <input type="text" id="input-date-range" class="input-full" placeholder="Pilih Rentang Tanggal..." readonly>
                         <button class="btn-action btn-orange" onclick="applyDateFilter()"><i class="fa-solid fa-filter"></i> Terapkan Filter</button>
                     </div>
 
-                    <!-- Pintasan Statistik -->
                     <div id="pane-stat" class="sidebar-pane">
                         <h4><i class="fa-solid fa-chart-pie"></i> Statistik Hotspot</h4>
                         <p style="font-size:11px; color:#555; margin-bottom:10px; line-height:1.4;">Buka panel lengkap untuk melihat chart bar Top Kawasan & Line chart tren mingguan.</p>
                         <button class="btn-action btn-purple" onclick="toggleStatModal(true)"><i class="fa-solid fa-chart-bar"></i> Buka Grafik</button>
                     </div>
-
                 </div>
             `;
             L.DomEvent.disableClickPropagation(wrapper);
@@ -380,33 +372,27 @@
         };
         sidebarControl.addTo(map);
 
-        // Fungsi Toggle Tab Sidebar
         function toggleSidebarTab(targetTab) {
             const contentBox = document.getElementById('sidebar-content');
             const targetBtn = document.getElementById(`btn-tab-${targetTab}`);
             const isActive = targetBtn.classList.contains('active');
 
-            // 1. Matikan semua tab dan sembunyikan semua pane
             document.querySelectorAll('.tab-icon').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.sidebar-pane').forEach(pane => pane.classList.remove('active'));
 
             if (isActive) {
-                // Jika klik tab yang sudah aktif = Tutup panel
                 contentBox.style.display = 'none';
             } else {
-                // Jika klik tab lain = Buka panel & nyalakan tab yang sesuai
                 targetBtn.classList.add('active');
                 contentBox.style.display = 'block';
                 document.getElementById(`pane-${targetTab}`).classList.add('active');
                 
-                // Ubah warna border sebelah kiri panel sesuai dengan icon
                 if (targetTab === 'search') contentBox.style.borderLeft = '4px solid #0275d8';
                 if (targetTab === 'filter') contentBox.style.borderLeft = '4px solid #f0ad4e';
                 if (targetTab === 'stat') contentBox.style.borderLeft = '4px solid #8c38d1';
             }
         }
 
-        // Inisialisasi Flatpickr
         let datePickerInstance = null;
         setTimeout(() => {
             datePickerInstance = flatpickr("#input-date-range", {
@@ -419,7 +405,6 @@
             });
         }, 200);
 
-        // Aksi Cari Koordinat
         let searchMarker = null;
         function goToCoordinate() {
             const lat = parseFloat(document.getElementById('input-lat').value);
@@ -430,7 +415,6 @@
             searchMarker = L.marker([lat, lng]).addTo(map).bindPopup(`<b>${lat}, ${lng}</b>`).openPopup();
         }
 
-        // Aksi Filter Tanggal
         function applyDateFilter() {
             if (!datePickerInstance) return;
             const selectedDates = datePickerInstance.selectedDates;
@@ -439,11 +423,9 @@
             const dateTo = flatpickr.formatDate(selectedDates[1], "Y-m-d");
             currentActiveDateRange = `${dateFrom} s/d ${dateTo}`;
 
-            const customApiUrl = `https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=true&from=${dateFrom}&to=${dateTo}&late=custom&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=`;
+            const customApiUrl = `https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=true&from=${dateFrom}&to=${dateTo}&late=&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=`;
             loadHotspotData(customApiUrl, dateFrom, dateTo);
         }
-
-        // --- LAYER CONTROL, GEOJSON & LOGIC (Sama seperti sebelumnya) ---
 
         const summaryControl = L.control({ position: 'bottomleft' });
         summaryControl.onAdd = function () {
@@ -500,7 +482,6 @@
             if (!kawasanGeoJSONData || !hotspotGeoJSONData) return;
             hotspotDalamLayer.clearLayers(); hotspotLuarLayer.clearLayers();
             let highCount = 0, mediumCount = 0;
-            globalHotspotRawList = [];
 
             kawasanFeatures.forEach(k => { k.highCount = 0; k.mediumCount = 0; });
             const kawasanBbox = kawasanGeoJSONData.features.map((f, i) => ({ feature: f, bbox: turf.bbox(f), i: i }));
@@ -530,8 +511,6 @@
                     const kItem = kawasanFeatures[kIdx];
                     if (conf === 'high') { highCount++; kItem.highCount++; }
                     if (conf === 'medium') { mediumCount++; kItem.mediumCount++; }
-                    
-                    if (p.date_hotspot || p.tanggal) globalHotspotRawList.push({ nkws: kItem.name, upt: kItem.upt, date: (p.date_hotspot || p.tanggal).split(' ')[0] });
                 } else hotspotLuarLayer.addLayer(marker);
             });
 
@@ -561,7 +540,13 @@
             if(chartHighestInstance) chartHighestInstance.destroy();
             chartHighestInstance = new Chart(document.getElementById('chartHighestNKWS').getContext('2d'), {
                 type: 'bar',
-                data: { labels: d.map(k=>k.n), datasets: [{label: 'Medium', data: d.map(k=>k.m), backgroundColor: '#ffa500'}, {label: 'High', data: d.map(k=>k.h), backgroundColor: '#ff4d4d'}] },
+                data: { 
+                    labels: d.map(k=>k.n), 
+                    datasets: [
+                        {label: 'Medium Confidence', data: d.map(k=>k.m), backgroundColor: '#ffa500'}, 
+                        {label: 'High Confidence', data: d.map(k=>k.h), backgroundColor: '#ff4d4d'}
+                    ] 
+                },
                 options: { responsive: true, maintainAspectRatio: false, scales: { x: {stacked: true}, y: {stacked: true, beginAtZero: true} } }
             });
         }
@@ -572,12 +557,12 @@
             if (chartWeeklyInstance) chartWeeklyInstance.destroy();
             
             if (!upt) {
-                chartWeeklyInstance = new Chart(ctx, { type: 'line', data: {labels:[], datasets:[]}, options: { responsive: true, maintainAspectRatio: false, plugins: { title: {display: true, text: 'Pilih UPT di atas.'} } } });
+                chartWeeklyInstance = new Chart(ctx, { type: 'line', data: {labels:[], datasets:[]}, options: { responsive: true, maintainAspectRatio: false, plugins: { title: {display: true, text: 'Pilih UPT di atas terlebih dahulu.'} } } });
                 return;
             }
 
             const dates = Array.from({length:7}, (_,i)=>{ const d=new Date(); d.setDate(d.getDate() - (6-i)); return d.toISOString().split('T')[0]; });
-            const filtered = globalHotspotRawList.filter(h => h.upt === upt);
+            const filtered = weeklyHotspotRawList.filter(h => h.upt === upt);
             const nkwsList = [...new Set(filtered.map(h => h.nkws))];
             const colors = ['#d9534f', '#0275d8', '#f0ad4e', '#5cb85c', '#8c38d1', '#e67e22', '#1abc9c', '#e74c3c'];
 
@@ -594,6 +579,52 @@
 
         function updateWeeklyChart() { renderWeeklyChart(); }
 
+        // Fetch data mandiri khusus untuk grafik 7 hari terakhir (tidak terpengaruh filter peta)
+        function loadWeeklyHotspotDataForCharts() {
+            const weeklyApiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
+            
+            fetch(weeklyApiUrl).then(r => r.json()).then(data => {
+                const features = data.features ? (data.features.features || data.features) : [];
+                weeklyHotspotRawList = [];
+
+                // Tentukan batas 7 hari ke belakang
+                const today = new Date();
+                const pastWeek = new Date();
+                pastWeek.setDate(today.getDate() - 7);
+
+                const kawasanBbox = kawasanGeoJSONData.features.map((f, i) => ({ feature: f, bbox: turf.bbox(f), i: i }));
+
+                features.forEach(hotspot => {
+                    const conf = (hotspot.properties.confidence_level || '').toLowerCase();
+                    if (conf !== 'high' && conf !== 'medium') return;
+
+                    const p = hotspot.properties;
+                    const dateStr = p.date_hotspot || p.tanggal;
+                    if (!dateStr) return;
+
+                    const hDate = new Date(dateStr);
+                    if (hDate >= pastWeek && hDate <= today) {
+                        const pt = hotspot.geometry.coordinates;
+                        for (let k of kawasanBbox) {
+                            if (pt[0] >= k.bbox[0] && pt[0] <= k.bbox[2] && pt[1] >= k.bbox[1] && pt[1] <= k.bbox[3]) {
+                                try {
+                                    if (turf.booleanPointInPolygon(hotspot, k.feature)) {
+                                        const kItem = kawasanFeatures[k.i];
+                                        weeklyHotspotRawList.push({
+                                            nkws: kItem.name,
+                                            upt: kItem.upt,
+                                            date: dateStr.split(' ')[0]
+                                        });
+                                        break;
+                                    }
+                                } catch(e){}
+                            }
+                        }
+                    }
+                });
+            }).catch(e => console.error("Gagal memuat data weekly chart:", e));
+        }
+
         fetch('kawasan.geojson').then(r => r.json()).then(data => {
             kawasanGeoJSONData = data;
             const l = L.geoJSON(data, {
@@ -605,6 +636,9 @@
             kawasanLayer.addLayer(l);
             isKawasanLoaded = true;
             checkAllDataLoaded();
+            
+            // Panggil fungsi data mandiri mingguan setelah kawasan siap
+            loadWeeklyHotspotDataForCharts();
             if (hotspotGeoJSONData) processHotspotLayers();
         }).catch(e => console.error(e));
 
@@ -623,7 +657,7 @@
             }).catch(e => console.error(e));
         }
 
-        loadHotspotData('https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=custom&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=');
+        loadHotspotData('https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=');
 
         const legend = L.control({ position: 'bottomright' });
         legend.onAdd = () => {
