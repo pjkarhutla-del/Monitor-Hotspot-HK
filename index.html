@@ -577,7 +577,7 @@
             .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
 
         // -----------------------------------------------------------
-        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI (DENGAN FILTER FRONTEND YANG DISEMPURNAKAN)
+        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI (DENGAN AUTO-ZOOM PETA)
         // -----------------------------------------------------------
         function loadHotspotData(url, filterFrom = null, filterTo = null) {
             document.getElementById('cnt-high').innerText = "Memuat...";
@@ -587,9 +587,8 @@
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
-                    // Filter tambahan sisi frontend yang disempurnakan
+                    // Filter tambahan sisi frontend
                     if (filterFrom && filterTo && data.features) {
-                        // Ubah tanggal filter menjadi objek Date (mulai jam 00:00:00 sampai 23:59:59)
                         const startDate = new Date(filterFrom + "T00:00:00");
                         const endDate = new Date(filterTo + "T23:59:59");
 
@@ -597,12 +596,9 @@
                             const dateStr = feature.properties.date_hotspot || feature.properties.tanggal || feature.properties.created_at;
                             if (!dateStr) return false;
                             
-                            // Normalisasi string tanggal dari API menjadi objek Date
                             const hotspotDate = new Date(dateStr);
                             
-                            // Validasi apakah tanggal valid, lalu bandingkan
                             if (isNaN(hotspotDate.getTime())) {
-                                // Fallback jika format string berantakan, ambil 10 karakter pertama (YYYY-MM-DD)
                                 const cleanDateStr = dateStr.substring(0, 10);
                                 return cleanDateStr >= filterFrom && cleanDateStr <= filterTo;
                             }
@@ -614,7 +610,8 @@
                     hotspotGeoJSONData = data;
                     hotspotLayer.clearLayers();
 
-                    L.geoJSON(data, {
+                    // Buat layer GeoJSON untuk hotspot yang memenuhi syarat confidence
+                    const geojsonLayer = L.geoJSON(data, {
                         filter: function(feature) {
                             const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
                             return conf === 'medium' || conf === 'high';
@@ -656,7 +653,24 @@
                             `;
                             layer.bindPopup(popupContent);
                         }
-                    }).addTo(hotspotLayer);
+                    });
+
+                    // Masukkan ke dalam hotspotLayer peta
+                    geojsonLayer.addTo(hotspotLayer);
+
+                    // FITUR BARU: Otomatis zoom peta ke area titik hotspot hasil filter
+                    if (filterFrom && filterTo) {
+                        const bounds = geojsonLayer.getBounds();
+                        if (bounds.isValid()) {
+                            map.flyToBounds(bounds, {
+                                padding: [50, 50],
+                                maxZoom: 12, // Batasi agar tidak terlalu dekat jika titiknya sedikit
+                                duration: 1.5
+                            });
+                        } else {
+                            alert("Tidak ditemukan titik hotspot pada rentang tanggal tersebut.");
+                        }
+                    }
 
                     calculateHotspotsInKawasan();
                 })
