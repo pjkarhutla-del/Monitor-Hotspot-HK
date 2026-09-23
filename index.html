@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Flatpickr CSS untuk Single Calendar Range -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     
     <!-- Turf.js untuk Analisis Spasial -->
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
@@ -107,7 +109,7 @@
             background: #025aa5;
         }
 
-        /* STYLE UNTUK WIDGET FILTER TANGGAL */
+        /* STYLE UNTUK WIDGET FILTER TANGGAL (SINGLE CALENDAR) */
         .filter-date-box {
             background: rgba(255, 255, 255, 0.95);
             padding: 10px 12px;
@@ -134,12 +136,15 @@
         }
         .filter-date-inputs input {
             width: 100%;
-            padding: 4px;
+            padding: 6px;
             font-size: 11px;
             border: 1px solid #ccc;
             border-radius: 4px;
             outline: none;
             box-sizing: border-box;
+            background: #fff;
+            text-align: center;
+            cursor: pointer;
         }
         .filter-date-box button {
             width: 100%;
@@ -245,7 +250,10 @@
 
     <div id="map"></div>
 
+    <!-- Leaflet & Flatpickr JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/id.js"></script>
 
     <script>
         // 1. Inisialisasi Peta & Basemap dengan Optimasi Canvas
@@ -352,16 +360,15 @@
         }
 
         // -----------------------------------------------------------
-        // FITUR FILTER TANGGAL HOTSPOT
+        // FITUR FILTER TANGGAL (SINGLE CALENDAR RANGE)
         // -----------------------------------------------------------
         const filterDateControl = L.control({ position: 'topleft' });
         filterDateControl.onAdd = function (map) {
             const div = L.DomUtil.create('div', 'filter-date-box');
             div.innerHTML = `
-                <h4><i class="fa-solid fa-calendar-days"></i> Filter Periode Tanggal</h4>
+                <h4><i class="fa-solid fa-calendar-days"></i> Filter Rentang Tanggal</h4>
                 <div class="filter-date-inputs">
-                    <label>Dari: <input type="date" id="input-date-from"></label>
-                    <label>Sampai: <input type="date" id="input-date-to"></label>
+                    <input type="text" id="input-date-range" placeholder="Pilih Rentang Tanggal..." readonly>
                 </div>
                 <button onclick="applyDateFilter()"><i class="fa-solid fa-filter"></i> Terapkan Filter</button>
             `;
@@ -371,19 +378,29 @@
         };
         filterDateControl.addTo(map);
 
+        let datePickerInstance = null;
+        setTimeout(() => {
+            datePickerInstance = flatpickr("#input-date-range", {
+                mode: "range",
+                dateFormat: "Y-m-d",
+                locale: "id",
+                altInput: true,
+                altFormat: "j F Y",
+                conjunction: " s/d "
+            });
+        }, 200);
+
         function applyDateFilter() {
-            const dateFrom = document.getElementById('input-date-from').value;
-            const dateTo = document.getElementById('input-date-to').value;
+            if (!datePickerInstance) return;
+            const selectedDates = datePickerInstance.selectedDates;
 
-            if (!dateFrom || !dateTo) {
-                alert("Harap isi tanggal 'Dari' dan 'Sampai' dengan lengkap!");
+            if (selectedDates.length < 2) {
+                alert("Harap pilih rentang tanggal (Dari dan Sampai) dengan lengkap pada kalender!");
                 return;
             }
 
-            if (dateFrom > dateTo) {
-                alert("Tanggal 'Dari' tidak boleh lebih besar dari tanggal 'Sampai'!");
-                return;
-            }
+            const dateFrom = flatpickr.formatDate(selectedDates[0], "Y-m-d");
+            const dateTo = flatpickr.formatDate(selectedDates[1], "Y-m-d");
 
             const customApiUrl = `https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=true&from=${dateFrom}&to=${dateTo}&late=&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=`;
             
@@ -410,7 +427,7 @@
         };
         summaryControl.addTo(map);
 
-        // Layer Groups yang Dipisah
+        // Layer Groups
         const hotspotDalamLayer = L.layerGroup().addTo(map);
         const hotspotLuarLayer = L.layerGroup().addTo(map);
         const kawasanLayer = L.layerGroup().addTo(map);
@@ -484,7 +501,7 @@
         map.on('move zoom', renderDynamicLabels);
 
         // -----------------------------------------------------------
-        // FUNGSI UTAMA ANALISIS SPASIAL & PEMISAHAN LAYER HOTSPOT
+        // FUNGSI ANALISIS SPASIAL & PEMISAHAN LAYER HOTSPOT
         // -----------------------------------------------------------
         function processHotspotLayers(filterFrom = null) {
             if (!kawasanGeoJSONData || !hotspotGeoJSONData) return;
@@ -523,7 +540,6 @@
                     }
                 }
 
-                // Tentukan warna marker berdasarkan tingkat confidence
                 let fillColor = (conf === 'high') ? "#FF0000" : "#FFFF00";
                 let radiusSize = (conf === 'high') ? 6 : 4;
                 let weightSize = (conf === 'high') ? 1.5 : 1;
@@ -550,7 +566,6 @@
                 `;
                 marker.bindPopup(popupContent);
 
-                // Pisahkan penempatan ke layer masing-masing
                 if (inside) {
                     hotspotDalamLayer.addLayer(marker);
                     if (conf === 'high') highCount++;
@@ -560,12 +575,11 @@
                 }
             });
 
-            // Perbarui Widget Statistik Kiri Bawah
             document.getElementById('cnt-high').innerText = highCount;
             document.getElementById('cnt-medium').innerText = mediumCount;
             document.getElementById('cnt-total').innerText = highCount + mediumCount;
 
-            // Auto Zoom jika menggunakan filter tanggal
+            // Auto Zoom hanya dijalankan ketika filter tanggal diterapkan oleh pengguna
             if (filterFrom) {
                 const combinedGroup = L.featureGroup([hotspotDalamLayer, hotspotLuarLayer]);
                 const bounds = combinedGroup.getBounds();
@@ -625,7 +639,7 @@
             .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
 
         // -----------------------------------------------------------
-        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI
+        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI (DEFAULT TANPA FILTER)
         // -----------------------------------------------------------
         function loadHotspotData(url, filterFrom = null, filterTo = null) {
             document.getElementById('cnt-high').innerText = "Memuat...";
@@ -660,7 +674,8 @@
                 .catch(err => console.error("Gagal memuat API Hotspot:", err));
         }
 
-        const defaultApiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=24&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
+        // DEFAULT PERTAMA KALI: Menggunakan filterperiode=false tanpa parameter late/tanggal agar menampilkan seluruh hotspot
+        const defaultApiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
         loadHotspotData(defaultApiUrl);
 
         // -----------------------------------------------------------
@@ -680,7 +695,7 @@
         legend.addTo(map);
 
         // -----------------------------------------------------------
-        // 8. KONTROL LAYER BASEMAP & OVERLAY (DIPISAH)
+        // 8. KONTROL LAYER BASEMAP & OVERLAY
         // -----------------------------------------------------------
         const baseMaps = {
             "OpenStreetMap": osm,
