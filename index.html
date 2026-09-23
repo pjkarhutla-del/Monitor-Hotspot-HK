@@ -403,7 +403,7 @@
             <div class="stat-modal-body">
                 <div class="tab-buttons">
                     <button class="tab-btn active" onclick="switchTab(event, 'tab-highest')">Top NKWS (High & Medium)</button>
-                    <button class="tab-btn" onclick="switchTab(event, 'tab-weekly')">Tren 1 Minggu Terakhir (by UPT)</button>
+                    <button class="tab-btn" onclick="switchTab(event, 'tab-weekly')">NKWS Hotspot 1 Minggu Terakhir (by UPT)</button>
                 </div>
 
                 <!-- TAB 1: NKWS TERTINGGI -->
@@ -416,12 +416,12 @@
                     </div>
                 </div>
 
-                <!-- TAB 2: TREND 1 MINGGU TERAKHIR BY UPT -->
+                <!-- TAB 2: NKWS 1 MINGGU TERAKHIR BERDASARKAN UPT -->
                 <div id="tab-weekly" class="tab-pane">
                     <div class="chart-filter-row">
                         <label for="select-upt">Filter Nama UPT (NUPT):</label>
                         <select id="select-upt" onchange="updateWeeklyChart()">
-                            <option value="ALL">-- Semua UPT (Kawasan Aktif Hotspot) --</option>
+                            <option value="ALL">-- Semua UPT --</option>
                         </select>
                     </div>
                     <div style="position: relative; height:350px; width:100%;">
@@ -614,7 +614,6 @@
         let hotspotGeoJSONData = null;
         const MIN_ZOOM_LABEL = 9;
         let kawasanFeatures = [];
-        let globalHotspotList = [];
 
         let isKawasanLoaded = false;
         let isHotspotLoaded = false;
@@ -684,15 +683,19 @@
 
             hotspotDalamLayer.clearLayers();
             hotspotLuarLayer.clearLayers();
-            globalHotspotList = [];
 
             let highCount = 0;
             let mediumCount = 0;
 
+            // Hitung tanggal 7 hari terakhir dari hari ini untuk filter mingguan
+            const now = new Date();
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(now.getDate() - 7);
+
             kawasanFeatures.forEach(item => {
                 item.highCount = 0;
                 item.mediumCount = 0;
-                item.hotspotsList = [];
+                item.weeklyCount = 0; // Reset counter khusus 1 minggu terakhir per NKWS
             });
 
             const kawasanWithBbox = kawasanGeoJSONData.features.map((f, index) => ({
@@ -746,10 +749,18 @@
                 if (inside) {
                     hotspotDalamLayer.addLayer(marker);
                     const kItem = kawasanFeatures[matchedKawasanIndex];
-                    kItem.hotspotsList.push(p);
 
                     if (conf === 'high') { highCount++; kItem.highCount++; }
                     if (conf === 'medium') { mediumCount++; kItem.mediumCount++; }
+
+                    // Cek apakah tanggal hotspot masuk dalam rentang 1 minggu terakhir
+                    const dateStr = p.date_hotspot || p.tanggal || '';
+                    if (dateStr) {
+                        const hDate = new Date(dateStr);
+                        if (!isNaN(hDate.getTime()) && hDate >= sevenDaysAgo && hDate <= now) {
+                            kItem.weeklyCount++;
+                        }
+                    }
                 } else {
                     hotspotLuarLayer.addLayer(marker);
                 }
@@ -772,7 +783,7 @@
                 if (k.upt && k.upt !== '-') uptSet.add(k.upt);
             });
 
-            select.innerHTML = '<option value="ALL">-- Semua UPT (Kawasan Aktif Hotspot) --</option>';
+            select.innerHTML = '<option value="ALL">-- Semua UPT --</option>';
             Array.from(uptSet).sort().forEach(upt => {
                 select.innerHTML += `<option value="${upt}">${upt}</option>`;
             });
@@ -785,7 +796,6 @@
         }
 
         function renderHighestChart() {
-            // Sort kawasan berdasarkan total hotspot terbanyak, ambil top 10
             const sortedKawasan = [...kawasanFeatures]
                 .map(k => ({ name: k.name, high: k.highCount, medium: k.mediumCount, total: k.highCount + k.mediumCount }))
                 .filter(k => k.total > 0)
@@ -821,60 +831,34 @@
 
         function renderWeeklyChart() {
             const selectedUpt = document.getElementById('select-upt').value;
-            
-            // Hitung tanggal 7 hari terakhir dari hari ini
-            const now = new Date();
-            const pastWeekDates = [];
-            for (let i = 6; i >= 0; i--) {
-                const d = new Date(now);
-                d.setDate(d.getDate() - i);
-                pastWeekDates.push(d.toISOString().substring(0, 10)); // Format YYYY-MM-DD
-            }
 
-            // Kumpulkan data hotspot 1 minggu terakhir per tanggal, difilter UPT jika ada
-            const dailyCounts = {};
-            pastWeekDates.forEach(date => { dailyCounts[date] = 0; });
+            // Filter kawasan berdasarkan pilihan UPT dan hanya ambil yang memiliki titik hotspot dalam 1 minggu terakhir (> 0)
+            const filteredKawasan = kawasanFeatures.filter(k => {
+                const matchUpt = (selectedUpt === 'ALL' || k.upt === selectedUpt);
+                return matchUpt && k.weeklyCount > 0;
+            }).sort((a, b) => b.weeklyCount - a.weeklyCount); // Urutkan dari terbanyak
 
-            kawasanFeatures.forEach(k => {
-                if (selectedUpt === 'ALL' || k.upt === selectedUpt) {
-                    if (k.hotspotsList) {
-                        k.hotspotsList.forEach(h => {
-                            const dateStr = h.date_hotspot ? h.date_hotspot.substring(0, 10) : '';
-                            if (dailyCounts.hasOwnProperty(dateStr)) {
-                                dailyCounts[dateStr]++;
-                            }
-                        });
-                    }
-                }
-            });
-
-            const labels = pastWeekDates.map(d => {
-                const parts = d.split('-');
-                return `${parts[2]}/${parts[1]}`;
-            });
-            const dataCounts = pastWeekDates.map(d => dailyCounts[d]);
+            const labels = filteredKawasan.map(k => k.name);
+            const dataCounts = filteredKawasan.map(k => k.weeklyCount);
 
             const ctx = document.getElementById('chartWeeklyUpt').getContext('2d');
             if (chartWeeklyInstance) chartWeeklyInstance.destroy();
 
             chartWeeklyInstance = new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: {
                     labels: labels,
                     datasets: [{
                         label: 'Jumlah Hotspot 1 Minggu Terakhir',
                         data: dataCounts,
-                        borderColor: '#ff6b35',
-                        backgroundColor: 'rgba(255, 107, 53, 0.2)',
-                        fill: true,
-                        tension: 0.3
+                        backgroundColor: '#ff6b35'
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        y: { beginAtZero: true }
+                        y: { beginAtZero: true, ticks: { stepSize: 1 } }
                     }
                 }
             });
@@ -902,7 +886,7 @@
                                 geoJsonFeature: feature,
                                 highCount: 0,
                                 mediumCount: 0,
-                                hotspotsList: []
+                                weeklyCount: 0
                             });
                         }
                     }
