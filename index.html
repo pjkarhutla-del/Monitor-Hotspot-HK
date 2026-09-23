@@ -107,6 +107,56 @@
             background: #025aa5;
         }
 
+        /* STYLE UNTUK WIDGET FILTER TANGGAL */
+        .filter-date-box {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+            border-left: 5px solid #f0ad4e;
+            margin-top: 10px !important;
+            margin-left: 10px !important;
+            width: 250px;
+        }
+        .filter-date-box h4 {
+            margin: 0 0 8px 0;
+            font-size: 12px;
+            font-weight: 800;
+            color: #111;
+        }
+        .filter-date-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-bottom: 6px;
+            font-size: 11px;
+            color: #333;
+        }
+        .filter-date-inputs input {
+            width: 100%;
+            padding: 4px;
+            font-size: 11px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+            box-sizing: border-box;
+        }
+        .filter-date-box button {
+            width: 100%;
+            padding: 6px;
+            background: #f0ad4e;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .filter-date-box button:hover {
+            background: #ec971f;
+        }
+
         .leaflet-top.leaflet-left .leaflet-control-zoom {
             margin-top: 10px;
         }
@@ -269,7 +319,6 @@
                 <button onclick="goToCoordinate()"><i class="fa-solid fa-magnifying-glass"></i> Cari Lokasi</button>
             `;
             
-            // Cegah interaksi di widget mengganggu peta di belakangnya
             L.DomEvent.disableClickPropagation(div);
             L.DomEvent.disableScrollPropagation(div);
             
@@ -308,6 +357,48 @@
                     </div>
                 `)
                 .openPopup();
+        }
+
+        // -----------------------------------------------------------
+        // FITUR FILTER TANGGAL HOTSPOT
+        // -----------------------------------------------------------
+        const filterDateControl = L.control({ position: 'topleft' });
+        filterDateControl.onAdd = function (map) {
+            const div = L.DomUtil.create('div', 'filter-date-box');
+            div.innerHTML = `
+                <h4><i class="fa-solid fa-calendar-days"></i> Filter Periode Tanggal</h4>
+                <div class="filter-date-inputs">
+                    <label>Dari: <input type="date" id="input-date-from"></label>
+                    <label>Sampai: <input type="date" id="input-date-to"></label>
+                </div>
+                <button onclick="applyDateFilter()"><i class="fa-solid fa-filter"></i> Terapkan Filter</button>
+            `;
+            
+            L.DomEvent.disableClickPropagation(div);
+            L.DomEvent.disableScrollPropagation(div);
+            
+            return div;
+        };
+        filterDateControl.addTo(map);
+
+        function applyDateFilter() {
+            const dateFrom = document.getElementById('input-date-from').value;
+            const dateTo = document.getElementById('input-date-to').value;
+
+            if (!dateFrom || !dateTo) {
+                alert("Harap isi tanggal 'Dari' dan 'Sampai' dengan lengkap!");
+                return;
+            }
+
+            if (dateFrom > dateTo) {
+                alert("Tanggal 'Dari' tidak boleh lebih besar dari tanggal 'Sampai'!");
+                return;
+            }
+
+            // Ubah URL API dengan parameter filter periode aktif
+            const customApiUrl = `https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=true&from=${dateFrom}&to=${dateTo}&late=&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=`;
+            
+            loadHotspotData(customApiUrl);
         }
 
         L.control.zoom({ position: 'topleft' }).addTo(map);
@@ -414,12 +505,10 @@
         function calculateHotspotsInKawasan() {
             if (!kawasanGeoJSONData || !hotspotGeoJSONData) return;
 
-            // Jalankan via setTimeout agar tidak memblokir UI browser (UI anti-freeze)
             setTimeout(() => {
                 let highCount = 0;
                 let mediumCount = 0;
 
-                // Pre-compute BBOX untuk seluruh kawasan
                 const kawasanWithBbox = kawasanGeoJSONData.features.map(f => ({
                     feature: f,
                     bbox: turf.bbox(f)
@@ -436,9 +525,7 @@
                         const item = kawasanWithBbox[i];
                         const b = item.bbox;
 
-                        // Quick Filter: Cek BBOX dulu (Sangat Cepat)
                         if (ptCoords[0] >= b[0] && ptCoords[0] <= b[2] && ptCoords[1] >= b[1] && ptCoords[1] <= b[3]) {
-                            // Jika ada di dalam BBOX, baru cek Point in Polygon (Presisi)
                             try {
                                 if (turf.booleanPointInPolygon(hotspot, item.feature)) {
                                     inside = true;
@@ -456,7 +543,6 @@
                     }
                 });
 
-                // Update UI
                 document.getElementById('cnt-high').innerText = highCount;
                 document.getElementById('cnt-medium').innerText = mediumCount;
                 document.getElementById('cnt-total').innerText = highCount + mediumCount;
@@ -505,63 +591,71 @@
             .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
 
         // -----------------------------------------------------------
-        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI (CANVAS RENDERER)
+        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI
         // -----------------------------------------------------------
-        const apiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?filterperiode=false&wilayah=IN&provinsi=&kabkota=&late=12&from=2022-08-31&to=2022-08-31&satelit%5B%5D=NASA-MODIS&satelit%5B%5D=NASA-SNPP&satelit%5B%5D=NASA-NOAA20&confidence%5B%5D=low&confidence%5B%5D=medium&confidence%5B%5D=high';
+        function loadHotspotData(url) {
+            document.getElementById('cnt-high').innerText = "Memuat...";
+            document.getElementById('cnt-medium').innerText = "Memuat...";
+            document.getElementById('cnt-total').innerText = "Memuat...";
 
-        fetch(apiUrl)
-            .then(response => response.json())
-            .then(data => {
-                hotspotGeoJSONData = data;
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    hotspotGeoJSONData = data;
+                    hotspotLayer.clearLayers();
 
-                L.geoJSON(data, {
-                    filter: function(feature) {
-                        const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
-                        return conf === 'medium' || conf === 'high';
-                    },
-                    pointToLayer: function (feature, latlng) {
-                        const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
+                    L.geoJSON(data, {
+                        filter: function(feature) {
+                            const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
+                            return conf === 'medium' || conf === 'high';
+                        },
+                        pointToLayer: function (feature, latlng) {
+                            const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
 
-                        // Menggunakan CircleMarker berbasis Canvas (Ringan & Cepat)
-                        if (conf === 'high') {
-                            return L.circleMarker(latlng, {
-                                radius: 6,
-                                fillColor: "#FF0000",
-                                color: "#000000",
-                                weight: 1.5,
-                                opacity: 1,
-                                fillOpacity: 0.95
-                            });
-                        } else if (conf === 'medium') {
-                            return L.circleMarker(latlng, {
-                                radius: 4,
-                                fillColor: "#FFFF00",
-                                color: "#000000",
-                                weight: 1,
-                                opacity: 1,
-                                fillOpacity: 0.9
-                            });
+                            if (conf === 'high') {
+                                return L.circleMarker(latlng, {
+                                    radius: 6,
+                                    fillColor: "#FF0000",
+                                    color: "#000000",
+                                    weight: 1.5,
+                                    opacity: 1,
+                                    fillOpacity: 0.95
+                                });
+                            } else if (conf === 'medium') {
+                                return L.circleMarker(latlng, {
+                                    radius: 4,
+                                    fillColor: "#FFFF00",
+                                    color: "#000000",
+                                    weight: 1,
+                                    opacity: 1,
+                                    fillOpacity: 0.9
+                                });
+                            }
+                        },
+                        onEachFeature: function (feature, layer) {
+                            const p = feature.properties;
+                            const popupContent = `
+                                <div style="font-size: 13px;">
+                                    <h4 style="margin: 0 0 5px 0; color: #d9534f;">Hotspot ${p.sumber || ''}</h4>
+                                    <b>Waktu:</b> ${p.date_hotspot || '-'}<br>
+                                    <b>Confidence Level:</b> <span style="font-weight:bold; color:${p.confidence_level === 'high' ? 'red' : 'orange'};">${p.confidence_level} (${p.confidence})</span><br>
+                                    <b>Lokasi:</b> Desa ${p.desa || '-'}, Kec. ${p.kecamatan || '-'}, ${p.kabkota || '-'}, ${p.nama_provinsi || '-'}<br>
+                                    <b>Koordinat:</b> ${p.lat}, ${p.long}<br>
+                                    ${p.route_create ? `<a href="${p.route_create}" target="_blank" style="display:inline-block; margin-top:8px; background:#0275d8; color:white; padding:3px 8px; text-decoration:none; border-radius:3px;">Form Groundcheck</a>` : ''}
+                                </div>
+                            `;
+                            layer.bindPopup(popupContent);
                         }
-                    },
-                    onEachFeature: function (feature, layer) {
-                        const p = feature.properties;
-                        const popupContent = `
-                            <div style="font-size: 13px;">
-                                <h4 style="margin: 0 0 5px 0; color: #d9534f;">Hotspot ${p.sumber || ''}</h4>
-                                <b>Waktu:</b> ${p.date_hotspot || '-'}<br>
-                                <b>Confidence Level:</b> <span style="font-weight:bold; color:${p.confidence_level === 'high' ? 'red' : 'orange'};">${p.confidence_level} (${p.confidence})</span><br>
-                                <b>Lokasi:</b> Desa ${p.desa || '-'}, Kec. ${p.kecamatan || '-'}, ${p.kabkota || '-'}, ${p.nama_provinsi || '-'}<br>
-                                <b>Koordinat:</b> ${p.lat}, ${p.long}<br>
-                                ${p.route_create ? `<a href="${p.route_create}" target="_blank" style="display:inline-block; margin-top:8px; background:#0275d8; color:white; padding:3px 8px; text-decoration:none; border-radius:3px;">Form Groundcheck</a>` : ''}
-                            </div>
-                        `;
-                        layer.bindPopup(popupContent);
-                    }
-                }).addTo(hotspotLayer);
+                    }).addTo(hotspotLayer);
 
-                calculateHotspotsInKawasan();
-            })
-            .catch(err => console.error("Gagal memuat API Hotspot:", err));
+                    calculateHotspotsInKawasan();
+                })
+                .catch(err => console.error("Gagal memuat API Hotspot:", err));
+        }
+
+        // Default Load (Default 24 jam terakhir / parameter awal)
+        const defaultApiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=24&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
+        loadHotspotData(defaultApiUrl);
 
         // -----------------------------------------------------------
         // 7. LEGENDA PETA
