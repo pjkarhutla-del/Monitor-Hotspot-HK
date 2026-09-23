@@ -526,7 +526,7 @@
             });
 
             kawasanFeatures.forEach(item => {
-                let dateRangeStr = "Tiada Data Tarikh";
+                let dateRangeStr = "Tidak Ada Data";
                 if (item.minDate && item.maxDate) {
                     dateRangeStr = item.minDate === item.maxDate ? item.minDate : `${item.minDate} s/d ${item.maxDate}`;
                 } else if (currentActiveDateRange !== "Semua Periode / Belum Difilter") {
@@ -535,8 +535,8 @@
 
                 item.layer.bindPopup(`
                     <b>${item.name}</b><br>
-                    UPT: ${item.upt}<br>
-                    <b>Rentang Tarikh:</b> ${dateRangeStr}
+                    ${item.upt}<br>
+                    <b>Rentang:</b> ${dateRangeStr}
                     <hr style="margin:5px 0;">
                     High: <span style="color:red">${item.highCount}</span> | Medium: <span style="color:#d99b00">${item.mediumCount}</span><br>
                     Total: <b>${item.highCount+item.mediumCount}</b>
@@ -604,7 +604,7 @@
 
         function updateWeeklyChart() { renderWeeklyChart(); }
 
-        // Fetch data mingguan khusus grafik dengan mengambil tarikh dari hs_id (YYYY-MM-DD)
+        // Fetch data mingguan khusus grafik dengan mengambil tarik dari hs_id (YYYY-MM-DD)
         function loadWeeklyHotspotDataForCharts() {
             const weeklyApiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=custom&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
             
