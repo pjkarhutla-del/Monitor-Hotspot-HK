@@ -606,26 +606,29 @@
 
         // Fetch data mingguan khusus grafik dengan mengambil tarik dari hs_id (YYYY-MM-DD)
         function loadWeeklyHotspotDataForCharts() {
-            const weeklyApiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=custom&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
+            const today = new Date();
+            const pastWeek = new Date();
+            pastWeek.setDate(today.getDate() - 7);
+        
+            const dateTo = today.toISOString().split('T')[0];
+            const dateFrom = pastWeek.toISOString().split('T')[0];
+        
+            // Sertakan from dan to, serta ubah filterperiode menjadi true agar API memproses rentang tanggal
+            const weeklyApiUrl = `https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=true&from=${dateFrom}&to=${dateTo}&late=custom&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=`;
             
             fetch(weeklyApiUrl).then(r => r.json()).then(data => {
                 const features = data.features ? (data.features.features || data.features) : [];
                 weeklyHotspotRawList = [];
-
-                const today = new Date();
-                const pastWeek = new Date();
-                pastWeek.setDate(today.getDate() - 7);
-
+        
                 const kawasanBbox = kawasanGeoJSONData.features.map((f, i) => ({ feature: f, bbox: turf.bbox(f), i: i }));
-
+        
                 features.forEach(hotspot => {
                     const conf = (hotspot.properties.confidence_level || '').toLowerCase();
                     if (conf !== 'high' && conf !== 'medium') return;
-
+        
                     const p = hotspot.properties;
                     if (!p.hs_id || p.hs_id.length < 10) return;
-
-                    // Ambil tarikh YYYY-MM-DD terus daripada hs_id
+        
                     const dateStr = p.hs_id.substring(0, 10);
                     const hDate = new Date(dateStr);
                     
@@ -648,6 +651,9 @@
                         }
                     }
                 });
+                
+                // Render ulang grafik setelah data berhasil ditarik
+                renderWeeklyChart();
             }).catch(e => console.error("Gagal memuat data weekly chart:", e));
         }
 
