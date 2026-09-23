@@ -272,8 +272,8 @@
         let currentActiveDateRange = "Semua Periode / Belum Difilter";
         let chartHighestInstance = null;
         let chartWeeklyInstance = null;
-        let globalHotspotRawList = [];      // Untuk peta (mengikuti filter)
-        let weeklyHotspotRawList = [];      // Khusus untuk grafik mingguan (7 hari terakhir mandiri)
+        let globalHotspotRawList = [];      
+        let weeklyHotspotRawList = [];      
 
         function showToast(message) {
             const toast = document.getElementById('success-toast');
@@ -579,29 +579,29 @@
 
         function updateWeeklyChart() { renderWeeklyChart(); }
 
-        // Fetch data mandiri khusus untuk grafik 7 hari terakhir (tidak terpengaruh filter peta)
+        // Fetch data mandiri khusus untuk grafik 7 hari terakhir dengan parsing tanggal yang diperbaiki
         function loadWeeklyHotspotDataForCharts() {
             const weeklyApiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
             
             fetch(weeklyApiUrl).then(r => r.json()).then(data => {
                 const features = data.features ? (data.features.features || data.features) : [];
                 weeklyHotspotRawList = [];
-        
+
                 const today = new Date();
                 const pastWeek = new Date();
                 pastWeek.setDate(today.getDate() - 7);
-        
+
                 const kawasanBbox = kawasanGeoJSONData.features.map((f, i) => ({ feature: f, bbox: turf.bbox(f), i: i }));
-        
+
                 features.forEach(hotspot => {
                     const conf = (hotspot.properties.confidence_level || '').toLowerCase();
                     if (conf !== 'high' && conf !== 'medium') return;
-        
+
                     const p = hotspot.properties;
                     const dateStr = p.date_hotspot || p.tanggal;
                     if (!dateStr) return;
-        
-                    // Perbaikan parsing tanggal agar aman dari spasi atau format jam
+
+                    // Perbaikan format tanggal agar sukses terbaca oleh new Date()
                     const cleanDateStr = dateStr.replace(' ', 'T');
                     const hDate = new Date(cleanDateStr);
                     
@@ -615,7 +615,7 @@
                                         weeklyHotspotRawList.push({
                                             nkws: kItem.name,
                                             upt: kItem.upt,
-                                            date: cleanDateStr.split('T')[0] // Format YYYY-MM-DD
+                                            date: cleanDateStr.split('T')[0]
                                         });
                                         break;
                                     }
@@ -626,7 +626,7 @@
                 });
             }).catch(e => console.error("Gagal memuat data weekly chart:", e));
         }
-        
+
         fetch('kawasan.geojson').then(r => r.json()).then(data => {
             kawasanGeoJSONData = data;
             const l = L.geoJSON(data, {
@@ -639,7 +639,6 @@
             isKawasanLoaded = true;
             checkAllDataLoaded();
             
-            // Panggil fungsi data mandiri mingguan setelah kawasan siap
             loadWeeklyHotspotDataForCharts();
             if (hotspotGeoJSONData) processHotspotLayers();
         }).catch(e => console.error(e));
