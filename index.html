@@ -1,601 +1,601 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HOTSPOT DALAM KSA, KPA, TB</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOTSPOT DALAM KSA, KPA, TB</title>
 
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    
-    <!-- Turf.js untuk Analisis Spasial -->
-    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <!-- Turf.js untuk Analisis Spasial -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        #map {
-            width: 100%;
-            height: 100vh;
-        }
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
 
-        /* STYLE JUDUL PETA & WAKTU RUNNING */
-        .map-title-box {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 10px 14px;
-            border-radius: 6px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-            border-left: 5px solid #004d66;
-            margin-top: 10px !important;
-            margin-left: 10px !important;
-            max-width: 300px;
-        }
-        .map-title-box h3 {
-            margin: 0 0 3px 0;
-            font-size: 14px;
-            font-weight: 800;
-            color: #111;
-            letter-spacing: 0.5px;
-            line-height: 1.2;
-        }
-        .map-title-box p {
-            margin: 0;
-            font-size: 10px;
-            color: #555;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        .map-title-box .run-time {
-            margin-top: 5px;
-            padding-top: 4px;
-            border-top: 1px dashed #ccc;
-            font-size: 10.5px;
-            color: #d9534f;
-            font-weight: 700;
-            text-transform: none;
-        }
-        
-        /* STYLE UNTUK WIDGET PENCARIAN KOORDINAT */
-        .search-coord-box {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 10px 12px;
-            border-radius: 6px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-            border-left: 5px solid #0275d8;
-            margin-top: 10px !important;
-            margin-left: 10px !important;
-            width: 250px;
-        }
-        .search-coord-box h4 {
-            margin: 0 0 8px 0;
-            font-size: 12px;
-            font-weight: 800;
-            color: #111;
-        }
-        .search-coord-inputs {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 6px;
-        }
-        .search-coord-inputs input {
-            width: 50%;
-            padding: 5px;
-            font-size: 11px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            outline: none;
-        }
-        .search-coord-box button {
-            width: 100%;
-            padding: 6px;
-            background: #0275d8;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .search-coord-box button:hover {
-            background: #025aa5;
-        }
+        /* STYLE JUDUL PETA & WAKTU RUNNING */
+        .map-title-box {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 14px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+            border-left: 5px solid #004d66;
+            margin-top: 10px !important;
+            margin-left: 10px !important;
+            max-width: 300px;
+        }
+        .map-title-box h3 {
+            margin: 0 0 3px 0;
+            font-size: 14px;
+            font-weight: 800;
+            color: #111;
+            letter-spacing: 0.5px;
+            line-height: 1.2;
+        }
+        .map-title-box p {
+            margin: 0;
+            font-size: 10px;
+            color: #555;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .map-title-box .run-time {
+            margin-top: 5px;
+            padding-top: 4px;
+            border-top: 1px dashed #ccc;
+            font-size: 10.5px;
+            color: #d9534f;
+            font-weight: 700;
+            text-transform: none;
+        }
+        
+        /* STYLE UNTUK WIDGET PENCARIAN KOORDINAT */
+        .search-coord-box {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+            border-left: 5px solid #0275d8;
+            margin-top: 10px !important;
+            margin-left: 10px !important;
+            width: 250px;
+        }
+        .search-coord-box h4 {
+            margin: 0 0 8px 0;
+            font-size: 12px;
+            font-weight: 800;
+            color: #111;
+        }
+        .search-coord-inputs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 6px;
+        }
+        .search-coord-inputs input {
+            width: 50%;
+            padding: 5px;
+            font-size: 11px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+        }
+        .search-coord-box button {
+            width: 100%;
+            padding: 6px;
+            background: #0275d8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .search-coord-box button:hover {
+            background: #025aa5;
+        }
 
-        .leaflet-top.leaflet-left .leaflet-control-zoom {
-            margin-top: 10px;
-        }
-        
-        /* STYLE RINGKASAN HOTSPOT KIRI BAWAH */
-        .hotspot-summary-box {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 10px 14px;
-            border-radius: 6px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-            border-left: 5px solid #d9534f;
-            margin-bottom: 15px !important;
-            margin-left: 10px !important;
-            min-width: 200px;
-            font-size: 12px;
-            color: #333;
-        }
-        .hotspot-summary-box h4 {
-            margin: 0 0 6px 0;
-            font-size: 12.5px;
-            font-weight: 800;
-            color: #111;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 4px;
-        }
-        .hotspot-summary-box table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .hotspot-summary-box td {
-            padding: 2px 0;
-            font-weight: 600;
-        }
-        .hotspot-summary-box td.val {
-            text-align: right;
-            font-weight: 800;
-        }
+        .leaflet-top.leaflet-left .leaflet-control-zoom {
+            margin-top: 10px;
+        }
+        
+        /* STYLE RINGKASAN HOTSPOT KIRI BAWAH */
+        .hotspot-summary-box {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 14px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+            border-left: 5px solid #d9534f;
+            margin-bottom: 15px !important;
+            margin-left: 10px !important;
+            min-width: 200px;
+            font-size: 12px;
+            color: #333;
+        }
+        .hotspot-summary-box h4 {
+            margin: 0 0 6px 0;
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #111;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 4px;
+        }
+        .hotspot-summary-box table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .hotspot-summary-box td {
+            padding: 2px 0;
+            font-weight: 600;
+        }
+        .hotspot-summary-box td.val {
+            text-align: right;
+            font-weight: 800;
+        }
 
-        /* Legenda Peta */
-        .legend {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 10px 15px;
-            line-height: 24px;
-            color: #333;
-            border-radius: 5px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.2);
-        }
-        .legend h4 {
-            margin: 0 0 5px 0;
-            font-size: 13px;
-        }
-        .legend i {
-            width: 18px;
-            height: 18px;
-            float: left;
-            margin-right: 8px;
-            opacity: 0.9;
-            text-align: center;
-        }
+        /* Legenda Peta */
+        .legend {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 15px;
+            line-height: 24px;
+            color: #333;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+        .legend h4 {
+            margin: 0 0 5px 0;
+            font-size: 13px;
+        }
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.9;
+            text-align: center;
+        }
 
-        /* STYLE LABEL KAWASAN */
-        .kawasan-dynamic-label {
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            color: #00334e;
-            font-weight: 800;
-            text-align: center;
-            white-space: normal !important;
-            word-wrap: break-word;
-            width: 120px !important;
-            margin-left: -60px !important;
-            line-height: 1.1;
-            pointer-events: none;
-            
-            text-shadow: 
-                -1.5px -1.5px 0 #fff,  
-                 1.5px -1.5px 0 #fff,
-                -1.5px  1.5px 0 #fff,
-                 1.5px  1.5px 0 #fff,
-                 0px    0px 5px #fff;
-        }
-    </style>
+        /* STYLE LABEL KAWASAN */
+        .kawasan-dynamic-label {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: #00334e;
+            font-weight: 800;
+            text-align: center;
+            white-space: normal !important;
+            word-wrap: break-word;
+            width: 120px !important;
+            margin-left: -60px !important;
+            line-height: 1.1;
+            pointer-events: none;
+            
+            text-shadow: 
+                -1.5px -1.5px 0 #fff,  
+                 1.5px -1.5px 0 #fff,
+                -1.5px  1.5px 0 #fff,
+                 1.5px  1.5px 0 #fff,
+                 0px    0px 5px #fff;
+        }
+    </style>
 </head>
 <body>
 
-    <div id="map"></div>
+    <div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <script>
-        // 1. Inisialisasi Peta & Basemap dengan Optimasi Canvas
-        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap'
-        });
+    <script>
+        // 1. Inisialisasi Peta & Basemap dengan Optimasi Canvas
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+        });
 
-        const esriSatelit = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 19,
-            attribution: 'Tiles &copy; Esri'
-        });
+        const esriSatelit = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles &copy; Esri'
+        });
 
-        const googleSatelit = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-            maxZoom: 20,
-            attribution: '&copy; Google Maps'
-        });
+        const googleSatelit = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            attribution: '&copy; Google Maps'
+        });
 
-        const map = L.map('map', {
-            center: [-2.548926, 118.014863],
-            zoom: 5,
-            zoomControl: false, 
-            preferCanvas: true, // OPTIMASI PERFORMA: Render via Canvas
-            layers: [esriSatelit]
-        });
+        const map = L.map('map', {
+            center: [-2.548926, 118.014863],
+            zoom: 5,
+            zoomControl: false, 
+            preferCanvas: true, // OPTIMASI PERFORMA: Render via Canvas
+            layers: [esriSatelit]
+        });
 
-        // -----------------------------------------------------------
-        // 2. FUNGSI UNTUK MENGAMBIL WAKTU REAL-TIME DILAKUKAN PROSES
-        // -----------------------------------------------------------
-        function getFormattedRunTime() {
-            const now = new Date();
-            const opsiTanggal = { day: '2-digit', month: 'long', year: 'numeric' };
-            const tanggal = now.toLocaleDateString('id-ID', opsiTanggal);
-            const jam = String(now.getHours()).padStart(2, '0');
-            const menit = String(now.getMinutes()).padStart(2, '0');
-            const detik = String(now.getSeconds()).padStart(2, '0');
-            
-            return `${tanggal} | ${jam}:${menit}:${detik} WIB`;
-        }
+        // -----------------------------------------------------------
+        // 2. FUNGSI UNTUK MENGAMBIL WAKTU REAL-TIME DILAKUKAN PROSES
+        // -----------------------------------------------------------
+        function getFormattedRunTime() {
+            const now = new Date();
+            const opsiTanggal = { day: '2-digit', month: 'long', year: 'numeric' };
+            const tanggal = now.toLocaleDateString('id-ID', opsiTanggal);
+            const jam = String(now.getHours()).padStart(2, '0');
+            const menit = String(now.getMinutes()).padStart(2, '0');
+            const detik = String(now.getSeconds()).padStart(2, '0');
+            
+            return `${tanggal} | ${jam}:${menit}:${detik} WIB`;
+        }
 
-        // -----------------------------------------------------------
-        // 3. JUDUL PETA DENGAN TANGGAL & JAM DIPROSES
-        // -----------------------------------------------------------
-        const titleControl = L.control({ position: 'topleft' });
-        titleControl.onAdd = function (map) {
-            const div = L.DomUtil.create('div', 'map-title-box');
-            div.innerHTML = `
-                <h3>HOTSPOT DALAM KSA, KPA, TB</h3>
-                <p>Direktorat Konservasi Kawasan, DITJEN KSDAE 2026</p>
-                <p>sumber data : SIPONGI</p>
-                <p class="run-time"><i class="fa-regular fa-clock"></i> Diproses: ${getFormattedRunTime()}</p>
-            `;
-            return div;
-        };
-        titleControl.addTo(map);
+        // -----------------------------------------------------------
+        // 3. JUDUL PETA DENGAN TANGGAL & JAM DIPROSES
+        // -----------------------------------------------------------
+        const titleControl = L.control({ position: 'topleft' });
+        titleControl.onAdd = function (map) {
+            const div = L.DomUtil.create('div', 'map-title-box');
+            div.innerHTML = `
+                <h3>HOTSPOT DALAM KSA, KPA, TB</h3>
+                <p>Direktorat Konservasi Kawasan, DITJEN KSDAE 2026</p>
+                <p>sumber data : SIPONGI</p>
+                <p class="run-time"><i class="fa-regular fa-clock"></i> Diproses: ${getFormattedRunTime()}</p>
+            `;
+            return div;
+        };
+        titleControl.addTo(map);
 
-        // -----------------------------------------------------------
-        // FITUR PENCARIAN KOORDINAT
-        // -----------------------------------------------------------
-        let searchMarker = null;
+        // -----------------------------------------------------------
+        // FITUR PENCARIAN KOORDINAT
+        // -----------------------------------------------------------
+        let searchMarker = null;
 
-        const searchCoordControl = L.control({ position: 'topleft' });
-        searchCoordControl.onAdd = function (map) {
-            const div = L.DomUtil.create('div', 'search-coord-box');
-            div.innerHTML = `
-                <h4><i class="fa-solid fa-location-dot"></i> Cari Koordinat</h4>
-                <div class="search-coord-inputs">
-                    <input type="number" id="input-lat" placeholder="Lat (cth: -2.5)" step="any">
-                    <input type="number" id="input-lng" placeholder="Long (cth: 118.0)" step="any">
-                </div>
-                <button onclick="goToCoordinate()"><i class="fa-solid fa-magnifying-glass"></i> Cari Lokasi</button>
-            `;
-            
-            // Cegah interaksi di widget mengganggu peta di belakangnya
-            L.DomEvent.disableClickPropagation(div);
-            L.DomEvent.disableScrollPropagation(div);
-            
-            return div;
-        };
-        searchCoordControl.addTo(map);
+        const searchCoordControl = L.control({ position: 'topleft' });
+        searchCoordControl.onAdd = function (map) {
+            const div = L.DomUtil.create('div', 'search-coord-box');
+            div.innerHTML = `
+                <h4><i class="fa-solid fa-location-dot"></i> Cari Koordinat</h4>
+                <div class="search-coord-inputs">
+                    <input type="number" id="input-lat" placeholder="Lat (cth: -2.5)" step="any">
+                    <input type="number" id="input-lng" placeholder="Long (cth: 118.0)" step="any">
+                </div>
+                <button onclick="goToCoordinate()"><i class="fa-solid fa-magnifying-glass"></i> Cari Lokasi</button>
+            `;
+            
+            // Cegah interaksi di widget mengganggu peta di belakangnya
+            L.DomEvent.disableClickPropagation(div);
+            L.DomEvent.disableScrollPropagation(div);
+            
+            return div;
+        };
+        searchCoordControl.addTo(map);
 
-        function goToCoordinate() {
-            const lat = parseFloat(document.getElementById('input-lat').value);
-            const lng = parseFloat(document.getElementById('input-lng').value);
+        function goToCoordinate() {
+            const lat = parseFloat(document.getElementById('input-lat').value);
+            const lng = parseFloat(document.getElementById('input-lng').value);
 
-            if (isNaN(lat) || isNaN(lng)) {
-                alert("Masukkan nilai Lintang (Latitude) dan Bujur (Longitude) yang valid!");
-                return;
-            }
+            if (isNaN(lat) || isNaN(lng)) {
+                alert("Masukkan nilai Lintang (Latitude) dan Bujur (Longitude) yang valid!");
+                return;
+            }
 
-            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-                alert("Koordinat di luar jangkauan! Lat: -90 s/d 90, Long: -180 s/d 180.");
-                return;
-            }
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                alert("Koordinat di luar jangkauan! Lat: -90 s/d 90, Long: -180 s/d 180.");
+                return;
+            }
 
-            if (searchMarker) {
-                map.removeLayer(searchMarker);
-            }
+            if (searchMarker) {
+                map.removeLayer(searchMarker);
+            }
 
-            map.flyTo([lat, lng], 14, {
-                animate: true,
-                duration: 1.5
-            });
+            map.flyTo([lat, lng], 14, {
+                animate: true,
+                duration: 1.5
+            });
 
-            searchMarker = L.marker([lat, lng]).addTo(map)
-                .bindPopup(`
-                    <div style="font-size: 12px; text-align: center;">
-                        <b>Hasil Pencarian Koordinat</b><br>
-                        ${lat}, ${lng}
-                    </div>
-                `)
-                .openPopup();
-        }
+            searchMarker = L.marker([lat, lng]).addTo(map)
+                .bindPopup(`
+                    <div style="font-size: 12px; text-align: center;">
+                        <b>Hasil Pencarian Koordinat</b><br>
+                        ${lat}, ${lng}
+                    </div>
+                `)
+                .openPopup();
+        }
 
-        L.control.zoom({ position: 'topleft' }).addTo(map);
+        L.control.zoom({ position: 'topleft' }).addTo(map);
 
-        // -----------------------------------------------------------
-        // PANEL STATISTIK HOTSPOT DALAM HUTAN KONSERVASI (KIRI BAWAH)
-        // -----------------------------------------------------------
-        const summaryControl = L.control({ position: 'bottomleft' });
-        summaryControl.onAdd = function (map) {
-            const div = L.DomUtil.create('div', 'hotspot-summary-box');
-            div.innerHTML = `
-                <h4>Hotspot dalam Hutan Konservasi</h4>
-                <table>
-                    <tr><td>High</td><td>:</td><td class="val" id="cnt-high" style="color:red;">Menghitung...</td></tr>
-                    <tr><td>Medium</td><td>:</td><td class="val" id="cnt-medium" style="color:#d99b00;">Menghitung...</td></tr>
-                    <tr style="border-top:1px dashed #ccc;"><td><b>Total</b></td><td>:</td><td class="val" id="cnt-total" style="color:#111;">Menghitung...</td></tr>
-                </table>
-            `;
-            return div;
-        };
-        summaryControl.addTo(map);
+        // -----------------------------------------------------------
+        // PANEL STATISTIK HOTSPOT DALAM HUTAN KONSERVASI (KIRI BAWAH)
+        // -----------------------------------------------------------
+        const summaryControl = L.control({ position: 'bottomleft' });
+        summaryControl.onAdd = function (map) {
+            const div = L.DomUtil.create('div', 'hotspot-summary-box');
+            div.innerHTML = `
+                <h4>Hotspot dalam Hutan Konservasi</h4>
+                <table>
+                    <tr><td>High</td><td>:</td><td class="val" id="cnt-high" style="color:red;">Menghitung...</td></tr>
+                    <tr><td>Medium</td><td>:</td><td class="val" id="cnt-medium" style="color:#d99b00;">Menghitung...</td></tr>
+                    <tr style="border-top:1px dashed #ccc;"><td><b>Total</b></td><td>:</td><td class="val" id="cnt-total" style="color:#111;">Menghitung...</td></tr>
+                </table>
+            `;
+            return div;
+        };
+        summaryControl.addTo(map);
 
-        // Layer Groups
-        const hotspotLayer = L.layerGroup().addTo(map);
-        const kawasanLayer = L.layerGroup().addTo(map);
-        const labelKawasanGroup = L.layerGroup().addTo(map);
+        // Layer Groups
+        const hotspotLayer = L.layerGroup().addTo(map);
+        const kawasanLayer = L.layerGroup().addTo(map);
+        const labelKawasanGroup = L.layerGroup().addTo(map);
 
-        // Variable Penyimpanan Data
-        let kawasanGeoJSONData = null;
-        let hotspotGeoJSONData = null;
-        const MIN_ZOOM_LABEL = 9;
-        let kawasanFeatures = [];
+        // Variable Penyimpanan Data
+        let kawasanGeoJSONData = null;
+        let hotspotGeoJSONData = null;
+        const MIN_ZOOM_LABEL = 9;
+        let kawasanFeatures = [];
 
-        // -----------------------------------------------------------
-        // 4. LOGIKA LABEL DINAMIS DENGAN TURF.JS
-        // -----------------------------------------------------------
-        function renderDynamicLabels() {
-            labelKawasanGroup.clearLayers();
-            const currentZoom = map.getZoom();
+        // -----------------------------------------------------------
+        // 4. LOGIKA LABEL DINAMIS DENGAN TURF.JS
+        // -----------------------------------------------------------
+        function renderDynamicLabels() {
+            labelKawasanGroup.clearLayers();
+            const currentZoom = map.getZoom();
 
-            if (currentZoom < MIN_ZOOM_LABEL) return;
+            if (currentZoom < MIN_ZOOM_LABEL) return;
 
-            const mapBounds = map.getBounds();
-            const viewportBbox = [
-                mapBounds.getWest(),
-                mapBounds.getSouth(),
-                mapBounds.getEast(),
-                mapBounds.getNorth()
-            ];
-            const viewportPolygon = turf.bboxPolygon(viewportBbox);
-            
-            const fontSize = Math.max(8, 9 + (currentZoom - MIN_ZOOM_LABEL) * 1.1);
+            const mapBounds = map.getBounds();
+            const viewportBbox = [
+                mapBounds.getWest(),
+                mapBounds.getSouth(),
+                mapBounds.getEast(),
+                mapBounds.getNorth()
+            ];
+            const viewportPolygon = turf.bboxPolygon(viewportBbox);
+            
+            const fontSize = Math.max(8, 9 + (currentZoom - MIN_ZOOM_LABEL) * 1.1);
 
-            kawasanFeatures.forEach(item => {
-                const layerBounds = item.layer.getBounds();
+            kawasanFeatures.forEach(item => {
+                const layerBounds = item.layer.getBounds();
 
-                if (mapBounds.intersects(layerBounds)) {
-                    try {
-                        const intersection = turf.intersect(item.geoJsonFeature, viewportPolygon);
+                if (mapBounds.intersects(layerBounds)) {
+                    try {
+                        const intersection = turf.intersect(item.geoJsonFeature, viewportPolygon);
 
-                        if (intersection) {
-                            const pointInside = turf.pointOnFeature(intersection);
-                            const labelCoords = pointInside.geometry.coordinates;
-                            const labelLatLng = L.latLng(labelCoords[1], labelCoords[0]);
+                        if (intersection) {
+                            const pointInside = turf.pointOnFeature(intersection);
+                            const labelCoords = pointInside.geometry.coordinates;
+                            const labelLatLng = L.latLng(labelCoords[1], labelCoords[0]);
 
-                            const labelIcon = L.divIcon({
-                                className: 'kawasan-dynamic-label',
-                                html: `<div style="font-size: ${fontSize}px;">${item.name}</div>`,
-                                iconSize: [0, 0],
-                                iconAnchor: [0, 0]
-                            });
+                            const labelIcon = L.divIcon({
+                                className: 'kawasan-dynamic-label',
+                                html: `<div style="font-size: ${fontSize}px;">${item.name}</div>`,
+                                iconSize: [0, 0],
+                                iconAnchor: [0, 0]
+                            });
 
-                            const labelMarker = L.marker(labelLatLng, { 
-                                icon: labelIcon, 
-                                interactive: false 
-                            });
-                            
-                            labelKawasanGroup.addLayer(labelMarker);
-                        }
-                    } catch (e) {
-                        const fallbackPoint = turf.pointOnFeature(item.geoJsonFeature);
-                        const coords = fallbackPoint.geometry.coordinates;
-                        const fallbackLatLng = L.latLng(coords[1], coords[0]);
-                        
-                        if (mapBounds.contains(fallbackLatLng)) {
-                            const labelIcon = L.divIcon({
-                                className: 'kawasan-dynamic-label',
-                                html: `<div style="font-size: ${fontSize}px;">${item.name}</div>`,
-                                iconSize: [0, 0],
-                                iconAnchor: [0, 0]
-                            });
-                            labelKawasanGroup.addLayer(L.marker(fallbackLatLng, { icon: labelIcon, interactive: false }));
-                        }
-                    }
-                }
-            });
-        }
+                            const labelMarker = L.marker(labelLatLng, { 
+                                icon: labelIcon, 
+                                interactive: false 
+                            });
+                            
+                            labelKawasanGroup.addLayer(labelMarker);
+                        }
+                    } catch (e) {
+                        const fallbackPoint = turf.pointOnFeature(item.geoJsonFeature);
+                        const coords = fallbackPoint.geometry.coordinates;
+                        const fallbackLatLng = L.latLng(coords[1], coords[0]);
+                        
+                        if (mapBounds.contains(fallbackLatLng)) {
+                            const labelIcon = L.divIcon({
+                                className: 'kawasan-dynamic-label',
+                                html: `<div style="font-size: ${fontSize}px;">${item.name}</div>`,
+                                iconSize: [0, 0],
+                                iconAnchor: [0, 0]
+                            });
+                            labelKawasanGroup.addLayer(L.marker(fallbackLatLng, { icon: labelIcon, interactive: false }));
+                        }
+                    }
+                }
+            });
+        }
 
-        map.on('move zoom', renderDynamicLabels);
+        map.on('move zoom', renderDynamicLabels);
 
-        // -----------------------------------------------------------
-        // FUNGSI SPASIAL TER-OPTIMASI: BBOX PRE-FILTERING + ASYNC
-        // -----------------------------------------------------------
-        function calculateHotspotsInKawasan() {
-            if (!kawasanGeoJSONData || !hotspotGeoJSONData) return;
+        // -----------------------------------------------------------
+        // FUNGSI SPASIAL TER-OPTIMASI: BBOX PRE-FILTERING + ASYNC
+        // -----------------------------------------------------------
+        function calculateHotspotsInKawasan() {
+            if (!kawasanGeoJSONData || !hotspotGeoJSONData) return;
 
-            // Jalankan via setTimeout agar tidak memblokir UI browser (UI anti-freeze)
-            setTimeout(() => {
-                let highCount = 0;
-                let mediumCount = 0;
+            // Jalankan via setTimeout agar tidak memblokir UI browser (UI anti-freeze)
+            setTimeout(() => {
+                let highCount = 0;
+                let mediumCount = 0;
 
-                // Pre-compute BBOX untuk seluruh kawasan
-                const kawasanWithBbox = kawasanGeoJSONData.features.map(f => ({
-                    feature: f,
-                    bbox: turf.bbox(f)
-                }));
+                // Pre-compute BBOX untuk seluruh kawasan
+                const kawasanWithBbox = kawasanGeoJSONData.features.map(f => ({
+                    feature: f,
+                    bbox: turf.bbox(f)
+                }));
 
-                hotspotGeoJSONData.features.forEach(hotspot => {
-                    const conf = hotspot.properties.confidence_level ? hotspot.properties.confidence_level.toLowerCase() : '';
-                    if (conf !== 'high' && conf !== 'medium') return;
+                hotspotGeoJSONData.features.forEach(hotspot => {
+                    const conf = hotspot.properties.confidence_level ? hotspot.properties.confidence_level.toLowerCase() : '';
+                    if (conf !== 'high' && conf !== 'medium') return;
 
-                    const ptCoords = hotspot.geometry.coordinates;
-                    let inside = false;
+                    const ptCoords = hotspot.geometry.coordinates;
+                    let inside = false;
 
-                    for (let i = 0; i < kawasanWithBbox.length; i++) {
-                        const item = kawasanWithBbox[i];
-                        const b = item.bbox;
+                    for (let i = 0; i < kawasanWithBbox.length; i++) {
+                        const item = kawasanWithBbox[i];
+                        const b = item.bbox;
 
-                        // Quick Filter: Cek BBOX dulu (Sangat Cepat)
-                        if (ptCoords[0] >= b[0] && ptCoords[0] <= b[2] && ptCoords[1] >= b[1] && ptCoords[1] <= b[3]) {
-                            // Jika ada di dalam BBOX, baru cek Point in Polygon (Presisi)
-                            try {
-                                if (turf.booleanPointInPolygon(hotspot, item.feature)) {
-                                    inside = true;
-                                    break;
-                                }
-                            } catch (err) {
-                                console.warn("Geometri invalid:", err);
-                            }
-                        }
-                    }
+                        // Quick Filter: Cek BBOX dulu (Sangat Cepat)
+                        if (ptCoords[0] >= b[0] && ptCoords[0] <= b[2] && ptCoords[1] >= b[1] && ptCoords[1] <= b[3]) {
+                            // Jika ada di dalam BBOX, baru cek Point in Polygon (Presisi)
+                            try {
+                                if (turf.booleanPointInPolygon(hotspot, item.feature)) {
+                                    inside = true;
+                                    break;
+                                }
+                            } catch (err) {
+                                console.warn("Geometri invalid:", err);
+                            }
+                        }
+                    }
 
-                    if (inside) {
-                        if (conf === 'high') highCount++;
-                        if (conf === 'medium') mediumCount++;
-                    }
-                });
+                    if (inside) {
+                        if (conf === 'high') highCount++;
+                        if (conf === 'medium') mediumCount++;
+                    }
+                });
 
-                // Update UI
-                document.getElementById('cnt-high').innerText = highCount;
-                document.getElementById('cnt-medium').innerText = mediumCount;
-                document.getElementById('cnt-total').innerText = highCount + mediumCount;
-            }, 100);
-        }
+                // Update UI
+                document.getElementById('cnt-high').innerText = highCount;
+                document.getElementById('cnt-medium').innerText = mediumCount;
+                document.getElementById('cnt-total').innerText = highCount + mediumCount;
+            }, 100);
+        }
 
-        // -----------------------------------------------------------
-        // 5. MEMUAT BATAS KAWASAN (kawasan.geojson)
-        // -----------------------------------------------------------
-        fetch('kawasan.geojson')
-            .then(response => response.json())
-            .then(data => {
-                kawasanGeoJSONData = data;
+        // -----------------------------------------------------------
+        // 5. MEMUAT BATAS KAWASAN (kawasan.geojson)
+        // -----------------------------------------------------------
+        fetch('kawasan.geojson')
+            .then(response => response.json())
+            .then(data => {
+                kawasanGeoJSONData = data;
 
-                const layer = L.geoJSON(data, {
-                    style: {
-                        color: "#8c38d1",
-                        weight: 2,
-                        opacity: 0.9,
-                        fillColor: "#8c38d1",
-                        fillOpacity: 0.05
-                    },
-                    onEachFeature: function (feature, layer) {
-                        if (feature.properties) {
-                            let popupText = "<b>Batas Kawasan</b><br>";
-                            for (let key in feature.properties) {
-                                popupText += `<b>${key}:</b> ${feature.properties[key]}<br>`;
-                            }
-                            layer.bindPopup(popupText);
+                const layer = L.geoJSON(data, {
+                    style: {
+                        color: "#8c38d1",
+                        weight: 2,
+                        opacity: 0.9,
+                        fillColor: "#8c38d1",
+                        fillOpacity: 0.05
+                    },
+                    onEachFeature: function (feature, layer) {
+                        if (feature.properties) {
+                            let popupText = "<b>Batas Kawasan</b><br>";
+                            for (let key in feature.properties) {
+                                popupText += `<b>${key}:</b> ${feature.properties[key]}<br>`;
+                            }
+                            layer.bindPopup(popupText);
 
-                            if (feature.properties.NKWS) {
-                                kawasanFeatures.push({
-                                    name: feature.properties.NKWS,
-                                    layer: layer,
-                                    geoJsonFeature: feature
-                                });
-                            }
-                        }
-                    }
-                });
-                kawasanLayer.addLayer(layer);
-                renderDynamicLabels();
-                
-                calculateHotspotsInKawasan();
-            })
-            .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
+                            if (feature.properties.NKWS) {
+                                kawasanFeatures.push({
+                                    name: feature.properties.NKWS,
+                                    layer: layer,
+                                    geoJsonFeature: feature
+                                });
+                            }
+                        }
+                    }
+                });
+                kawasanLayer.addLayer(layer);
+                renderDynamicLabels();
+                
+                calculateHotspotsInKawasan();
+            })
+            .catch(err => console.error("Gagal memuat kawasan.geojson:", err));
 
-        // -----------------------------------------------------------
-        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI (CANVAS RENDERER)
-        // -----------------------------------------------------------
-        const apiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=24&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
+        // -----------------------------------------------------------
+        // 6. MEMUAT DATA HOTSPOT DARI API SIPONGI (CANVAS RENDERER)
+        // -----------------------------------------------------------
+        const apiUrl = 'https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=24&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=';
 
-        fetch(apiUrl)
-            .then(response => response.json())
-            .then(data => {
-                hotspotGeoJSONData = data;
+        fetch(apiUrl)
+            .then(response => response.json())
+            .then(data => {
+                hotspotGeoJSONData = data;
 
-                L.geoJSON(data, {
-                    filter: function(feature) {
-                        const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
-                        return conf === 'medium' || conf === 'high';
-                    },
-                    pointToLayer: function (feature, latlng) {
-                        const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
+                L.geoJSON(data, {
+                    filter: function(feature) {
+                        const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
+                        return conf === 'medium' || conf === 'high';
+                    },
+                    pointToLayer: function (feature, latlng) {
+                        const conf = feature.properties.confidence_level ? feature.properties.confidence_level.toLowerCase() : '';
 
-                        // Menggunakan CircleMarker berbasis Canvas (Ringan & Cepat)
-                        if (conf === 'high') {
-                            return L.circleMarker(latlng, {
-                                radius: 6,
-                                fillColor: "#FF0000",
-                                color: "#000000",
-                                weight: 1.5,
-                                opacity: 1,
-                                fillOpacity: 0.95
-                            });
-                        } else if (conf === 'medium') {
-                            return L.circleMarker(latlng, {
-                                radius: 4,
-                                fillColor: "#FFFF00",
-                                color: "#000000",
-                                weight: 1,
-                                opacity: 1,
-                                fillOpacity: 0.9
-                            });
-                        }
-                    },
-                    onEachFeature: function (feature, layer) {
-                        const p = feature.properties;
-                        const popupContent = `
-                            <div style="font-size: 13px;">
-                                <h4 style="margin: 0 0 5px 0; color: #d9534f;">Hotspot ${p.sumber || ''}</h4>
-                                <b>Waktu:</b> ${p.date_hotspot || '-'}<br>
-                                <b>Confidence Level:</b> <span style="font-weight:bold; color:${p.confidence_level === 'high' ? 'red' : 'orange'};">${p.confidence_level} (${p.confidence})</span><br>
-                                <b>Lokasi:</b> Desa ${p.desa || '-'}, Kec. ${p.kecamatan || '-'}, ${p.kabkota || '-'}, ${p.nama_provinsi || '-'}<br>
-                                <b>Koordinat:</b> ${p.lat}, ${p.long}<br>
-                                ${p.route_create ? `<a href="${p.route_create}" target="_blank" style="display:inline-block; margin-top:8px; background:#0275d8; color:white; padding:3px 8px; text-decoration:none; border-radius:3px;">Form Groundcheck</a>` : ''}
-                            </div>
-                        `;
-                        layer.bindPopup(popupContent);
-                    }
-                }).addTo(hotspotLayer);
+                        // Menggunakan CircleMarker berbasis Canvas (Ringan & Cepat)
+                        if (conf === 'high') {
+                            return L.circleMarker(latlng, {
+                                radius: 6,
+                                fillColor: "#FF0000",
+                                color: "#000000",
+                                weight: 1.5,
+                                opacity: 1,
+                                fillOpacity: 0.95
+                            });
+                        } else if (conf === 'medium') {
+                            return L.circleMarker(latlng, {
+                                radius: 4,
+                                fillColor: "#FFFF00",
+                                color: "#000000",
+                                weight: 1,
+                                opacity: 1,
+                                fillOpacity: 0.9
+                            });
+                        }
+                    },
+                    onEachFeature: function (feature, layer) {
+                        const p = feature.properties;
+                        const popupContent = `
+                            <div style="font-size: 13px;">
+                                <h4 style="margin: 0 0 5px 0; color: #d9534f;">Hotspot ${p.sumber || ''}</h4>
+                                <b>Waktu:</b> ${p.date_hotspot || '-'}<br>
+                                <b>Confidence Level:</b> <span style="font-weight:bold; color:${p.confidence_level === 'high' ? 'red' : 'orange'};">${p.confidence_level} (${p.confidence})</span><br>
+                                <b>Lokasi:</b> Desa ${p.desa || '-'}, Kec. ${p.kecamatan || '-'}, ${p.kabkota || '-'}, ${p.nama_provinsi || '-'}<br>
+                                <b>Koordinat:</b> ${p.lat}, ${p.long}<br>
+                                ${p.route_create ? `<a href="${p.route_create}" target="_blank" style="display:inline-block; margin-top:8px; background:#0275d8; color:white; padding:3px 8px; text-decoration:none; border-radius:3px;">Form Groundcheck</a>` : ''}
+                            </div>
+                        `;
+                        layer.bindPopup(popupContent);
+                    }
+                }).addTo(hotspotLayer);
 
-                calculateHotspotsInKawasan();
-            })
-            .catch(err => console.error("Gagal memuat API Hotspot:", err));
+                calculateHotspotsInKawasan();
+            })
+            .catch(err => console.error("Gagal memuat API Hotspot:", err));
 
-        // -----------------------------------------------------------
-        // 7. LEGENDA PETA
-        // -----------------------------------------------------------
-        const legend = L.control({ position: 'bottomright' });
-        legend.onAdd = function (map) {
-            const div = L.DomUtil.create('div', 'legend');
-            div.innerHTML = `
-                <h4>Legenda</h4>
-                <i style="background: #FF0000; border-radius: 50%; border: 1.5px solid #000;"></i> High<br>
-                <i style="background: #FFFF00; border-radius: 50%; border: 1px solid #000;"></i> Medium<br>
-                <i style="border: 2px solid #8c38d1; background: rgba(140,56,209,0.15);"></i> Batas Kawasan
-            `;
-            return div;
-        };
-        legend.addTo(map);
+        // -----------------------------------------------------------
+        // 7. LEGENDA PETA
+        // -----------------------------------------------------------
+        const legend = L.control({ position: 'bottomright' });
+        legend.onAdd = function (map) {
+            const div = L.DomUtil.create('div', 'legend');
+            div.innerHTML = `
+                <h4>Legenda</h4>
+                <i style="background: #FF0000; border-radius: 50%; border: 1.5px solid #000;"></i> High<br>
+                <i style="background: #FFFF00; border-radius: 50%; border: 1px solid #000;"></i> Medium<br>
+                <i style="border: 2px solid #8c38d1; background: rgba(140,56,209,0.15);"></i> Batas Kawasan
+            `;
+            return div;
+        };
+        legend.addTo(map);
 
-        // -----------------------------------------------------------
-        // 8. KONTROL LAYER BASEMAP & OVERLAY
-        // -----------------------------------------------------------
-        const baseMaps = {
-            "OpenStreetMap": osm,
-            "Satelit (Esri)": esriSatelit,
-            "Satelit (Google)": googleSatelit
-        };
+        // -----------------------------------------------------------
+        // 8. KONTROL LAYER BASEMAP & OVERLAY
+        // -----------------------------------------------------------
+        const baseMaps = {
+            "OpenStreetMap": osm,
+            "Satelit (Esri)": esriSatelit,
+            "Satelit (Google)": googleSatelit
+        };
 
-        const overlayMaps = {
-            "Titik Hotspot": hotspotLayer,
-            "Batas Kawasan": kawasanLayer,
-            "Label Kawasan": labelKawasanGroup
-        };
+        const overlayMaps = {
+            "Titik Hotspot": hotspotLayer,
+            "Batas Kawasan": kawasanLayer,
+            "Label Kawasan": labelKawasanGroup
+        };
 
-        L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
+        L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
-    </script>
+    </script>
 </body>
 </html>
