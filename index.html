@@ -275,18 +275,21 @@
 
                 <!-- TAB 2: TREN MINGGUAN -->
                 <div id="modal-tab-weekly" class="tab-pane">
-                       <div class="chart-filter-row">
-                            <label for="select-upt">Cari / Pilih Nama UPT (NUPT):</label>
-                            <!-- Berikan class atau langsung inisialisasi via ID -->
-                            <select id="select-upt" onchange="updateWeeklyChart()">
-                                <option value="">-- Ketik atau Pilih UPT --</option>
-                            </select>
-                        </div>
-                </div>
-                <div style="position: relative; height:350px; width:100%;">
+                    <div class="chart-filter-row">
+                        <label for="select-upt">Cari / Pilih Nama UPT (NUPT):</label>
+                        <select id="select-upt" onchange="updateWeeklyChart()">
+                            <option value="">-- Ketik atau Pilih UPT --</option>
+                        </select>
+                    </div>
+                    <div style="position: relative; height:350px; width:100%;">
                         <canvas id="chartWeeklyUpt"></canvas>
-                </div>
-             </div>
+                    </div>
+                </div> <!-- <-- PENUTUP TAB-PANE YANG BENAR ADA DI SINI -->
+
+            </div>
+        </div>
+    </div>
+            
     <!-- TOAST NOTIFICATION CONTAINER -->
     <div id="success-toast" class="toast-notification">
         <i class="fa-solid fa-circle-check"></i>
