@@ -16,6 +16,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <!-- Chart.js untuk Grafik -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS untuk Export .xlsx dan .csv -->
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <!-- shp-write untuk Export Shapefile (.zip) -->
+    <script src="https://unpkg.com/shp-write@latest/shpwrite.js"></script>
 
     <style>
         body, html {
@@ -156,10 +160,12 @@
             font-weight: bold;
             cursor: pointer;
             transition: background 0.2s;
+            margin-bottom: 5px;
         }
         .btn-blue { background: #0275d8; } .btn-blue:hover { background: #025aa5; }
         .btn-orange { background: #f0ad4e; } .btn-orange:hover { background: #ec971f; }
         .btn-purple { background: #8c38d1; } .btn-purple:hover { background: #732ab0; }
+        .btn-green { background: #5cb85c; } .btn-green:hover { background: #4cae4c; }
 
         /* --- RINGKASAN KIRI BAWAH --- */
         .hotspot-summary-box {
@@ -340,6 +346,9 @@
                     <button class="tab-icon" id="btn-tab-stat" onclick="toggleSidebarTab('stat')" title="Grafik & Statistik">
                         <i class="fa-solid fa-chart-pie" style="color:#8c38d1"></i>
                     </button>
+                    <button class="tab-icon" id="btn-tab-export" onclick="toggleSidebarTab('export')" title="Ekspor Data">
+                        <i class="fa-solid fa-file-arrow-down" style="color:#5cb85c"></i>
+                    </button>
                 </div>
                 
                 <div class="sidebar-content" id="sidebar-content">
@@ -362,6 +371,14 @@
                         <h4><i class="fa-solid fa-chart-pie"></i> Statistik Hotspot</h4>
                         <p style="font-size:11px; color:#555; margin-bottom:10px; line-height:1.4;">Buka panel lengkap untuk melihat chart bar Top Kawasan & Line chart tren mingguan.</p>
                         <button class="btn-action btn-purple" onclick="toggleStatModal(true)"><i class="fa-solid fa-chart-bar"></i> Buka Grafik</button>
+                    </div>
+
+                    <div id="pane-export" class="sidebar-pane">
+                        <h4><i class="fa-solid fa-file-arrow-down"></i> Ekspor Data Hotspot</h4>
+                        <p style="font-size:11px; color:#555; margin-bottom:10px; line-height:1.4;">Unduh data hotspot aktif saat ini:</p>
+                        <button class="btn-action btn-green" onclick="exportData('xlsx')"><i class="fa-solid fa-file-excel"></i> Ekspor ke .XLSX</button>
+                        <button class="btn-action btn-green" onclick="exportData('csv')"><i class="fa-solid fa-file-csv"></i> Ekspor ke .CSV</button>
+                        <button class="btn-action btn-green" onclick="exportData('shp')"><i class="fa-solid fa-file-zipper"></i> Ekspor ke .SHP (.zip)</button>
                     </div>
                 </div>
             `;
@@ -389,6 +406,7 @@
                 if (targetTab === 'search') contentBox.style.borderLeft = '4px solid #0275d8';
                 if (targetTab === 'filter') contentBox.style.borderLeft = '4px solid #f0ad4e';
                 if (targetTab === 'stat') contentBox.style.borderLeft = '4px solid #8c38d1';
+                if (targetTab === 'export') contentBox.style.borderLeft = '4px solid #5cb85c';
             }
         }
 
@@ -411,7 +429,7 @@
             if (isNaN(lat) || isNaN(lng)) { alert("Masukkan koordinat valid!"); return; }
             if (searchMarker) map.removeLayer(searchMarker);
             map.flyTo([lat, lng], 14, { animate: true, duration: 1.5 });
-            searchMarker = L.marker([lat, lng]).addTo(map).bindPopup(`<b>${lat}, ${lng}</b>`).openPopup();
+            searchMarker = L.marker([lat, lng]).addTo(map).bindPopup(`<b>X, Y :</b> ${lng}, ${lat}`).openPopup();
         }
 
         function applyDateFilter() {
@@ -508,12 +526,11 @@
                 });
                 
                 const p = hotspot.properties;
-                // Penambahan informasi Koordinat X dan Y pada Pop-up Hotspot
+                // Format popup dengan format X, Y : koordinat x, koordinat y
                 marker.bindPopup(`
                     <b>Confidence:</b> ${p.confidence_level}<br>
                     <b>Waktu:</b> ${p.date_hotspot||'-'}<br>
-                    <b>Koordinat X (Long):</b> ${pt[0].toFixed(5)}<br>
-                    <b>Koordinat Y (Lat):</b> ${pt[1].toFixed(5)}
+                    <b>X, Y :</b> ${pt[0].toFixed(5)}, ${pt[1].toFixed(5)}
                 `);
 
                 if (inside) {
@@ -522,7 +539,6 @@
                     if (conf === 'high') { highCount++; kItem.highCount++; }
                     if (conf === 'medium') { mediumCount++; kItem.mediumCount++; }
 
-                    // Ambil tanggal langsung dari hs_id (format YYYY-MM-DD)
                     if (p.hs_id && p.hs_id.length >= 10) {
                         const hDateStr = p.hs_id.substring(0, 10);
                         if (!kItem.minDate || hDateStr < kItem.minDate) kItem.minDate = hDateStr;
@@ -555,6 +571,63 @@
             
             isHotspotLoaded = true;
             checkAllDataLoaded(filterFrom !== null);
+        }
+
+        // --- FUNGSI EKSPOR DATA (.xlsx, .csv, .shp) ---
+        function exportData(type) {
+            if (!hotspotGeoJSONData || !hotspotGeoJSONData.features) {
+                alert("Data hotspot belum tersedia untuk diekspor!");
+                return;
+            }
+
+            // Filter hanya data high & medium yang valid
+            const validFeatures = hotspotGeoJSONData.features.filter(f => {
+                const conf = (f.properties.confidence_level || '').toLowerCase();
+                return conf === 'high' || conf === 'medium';
+            });
+
+            if (validFeatures.length === 0) {
+                alert("Tidak ada data hotspot untuk diekspor.");
+                return;
+            }
+
+            // Format data tabular untuk Excel & CSV
+            const rows = validFeatures.map(f => {
+                const p = f.properties;
+                const coords = f.geometry.coordinates;
+                return {
+                    HS_ID: p.hs_id || '',
+                    Confidence: p.confidence_level || '',
+                    Waktu: p.date_hotspot || '',
+                    Longitude_X: coords[0],
+                    Latitude_Y: coords[1],
+                    Satelit: p.satelit || '-'
+                };
+            });
+
+            if (type === 'xlsx' || type === 'csv') {
+                const worksheet = XLSX.utils.json_to_sheet(rows);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "DataHotspot");
+                XLSX.writeFile(workbook, `data_hotspot_export.${type}`);
+                showToast(`Berhasil mengekspor file .${type}`);
+            } else if (type === 'shp') {
+                // Membentuk ulang GeoJSON bersih khusus fitur valid untuk ekspor Shapefile ZIP
+                const exportGeoJson = {
+                    type: "FeatureCollection",
+                    features: validFeatures
+                };
+                try {
+                    shpwrite.download(exportGeoJson, {
+                        folder: 'hotspot_export',
+                        types: { point: 'hotspot_points' }
+                    });
+                    showToast("Berhasil mengekspor Shapefile (.zip)");
+                } catch (e) {
+                    console.error(e);
+                    alert("Gagal mengekspor file SHP.");
+                }
+            }
         }
 
         function populateUptDropdown() {
@@ -610,7 +683,6 @@
 
         function updateWeeklyChart() { renderWeeklyChart(); }
 
-        // Fetch data mingguan khusus grafik dengan mengambil tarik dari hs_id (YYYY-MM-DD)
         function loadWeeklyHotspotDataForCharts() {
             const today = new Date();
             const pastWeek = new Date();
@@ -619,7 +691,6 @@
             const dateTo = today.toISOString().split('T')[0];
             const dateFrom = pastWeek.toISOString().split('T')[0];
         
-            // Sertakan from dan to, serta ubah filterperiode menjadi true agar API memproses rentang tanggal
             const weeklyApiUrl = `https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=true&from=${dateFrom}&to=${dateTo}&late=custom&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=`;
             
             fetch(weeklyApiUrl).then(r => r.json()).then(data => {
@@ -657,8 +728,6 @@
                         }
                     }
                 });
-                
-                // Render ulang grafik setelah data berhasil ditarik
                 renderWeeklyChart();
             }).catch(e => console.error("Gagal memuat data weekly chart:", e));
         }
