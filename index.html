@@ -494,7 +494,7 @@
                 const conf = (hotspot.properties.confidence_level || '').toLowerCase();
                 if (conf !== 'high' && conf !== 'medium') return;
 
-                const pt = hotspot.geometry.coordinates;
+                const pt = hotspot.geometry.coordinates; // pt[0] = X (Longitude), pt[1] = Y (Latitude)
                 let inside = false, kIdx = -1;
                 for (let k of kawasanBbox) {
                     if (pt[0] >= k.bbox[0] && pt[0] <= k.bbox[2] && pt[1] >= k.bbox[1] && pt[1] <= k.bbox[3]) {
@@ -508,7 +508,13 @@
                 });
                 
                 const p = hotspot.properties;
-                marker.bindPopup(`<b>Confidence:</b> ${p.confidence_level}<br><b>Waktu:</b> ${p.date_hotspot||'-'}`);
+                // Penambahan informasi Koordinat X dan Y pada Pop-up Hotspot
+                marker.bindPopup(`
+                    <b>Confidence:</b> ${p.confidence_level}<br>
+                    <b>Waktu:</b> ${p.date_hotspot||'-'}<br>
+                    <b>Koordinat X (Long):</b> ${pt[0].toFixed(5)}<br>
+                    <b>Koordinat Y (Lat):</b> ${pt[1].toFixed(5)}
+                `);
 
                 if (inside) {
                     hotspotDalamLayer.addLayer(marker);
