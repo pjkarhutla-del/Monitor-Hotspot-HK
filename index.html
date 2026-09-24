@@ -14,7 +14,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <!-- Flatpickr CSS untuk Single Calendar Range -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    
+    <!-- Tom Select CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+   
+    <!-- Tom Select JS -->
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
     <!-- Turf.js untuk Analisis Spasial -->
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <!-- Chart.js untuk Grafik -->
@@ -259,11 +263,13 @@
 
                 <!-- TAB 2: TREN MINGGUAN -->
                 <div id="modal-tab-weekly" class="tab-pane">
-                    <div class="chart-filter-row">
-                        <label for="select-upt">Pilih Nama UPT (NUPT) terlebih dahulu:</label>
-                        <select id="select-upt" onchange="updateWeeklyChart()">
-                            <option value="">-- Pilih UPT --</option>
-                        </select>
+                       <div class="chart-filter-row">
+                            <label for="select-upt">Cari / Pilih Nama UPT (NUPT):</label>
+                            <!-- Berikan class atau langsung inisialisasi via ID -->
+                            <select id="select-upt" onchange="updateWeeklyChart()">
+                                <option value="">-- Ketik atau Pilih UPT --</option>
+                            </select>
+                        </div>
                     </div>
                     <div style="position: relative; height:350px; width:100%;">
                         <canvas id="chartWeeklyUpt"></canvas>
@@ -688,11 +694,32 @@
             }
         }
 
+        let uptTomSelectInstance = null;
+
         function populateUptDropdown() {
             const s = document.getElementById('select-upt'), set = new Set();
             kawasanFeatures.forEach(k => { if(k.upt && k.upt!=='-') set.add(k.upt); });
-            s.innerHTML = '<option value="">-- Pilih UPT --</option>';
+            
+            // Kosongkan option awal
+            s.innerHTML = '<option value="">-- Ketik atau Pilih UPT --</option>';
             Array.from(set).sort().forEach(u => s.innerHTML += `<option value="${u}">${u}</option>`);
+        
+            // Inisialisasi atau perbarui Tom Select agar bisa diketik/dicari
+            if (uptTomSelectInstance) {
+                uptTomSelectInstance.destroy(); // Hancurkan instance lama jika ada pembaruan data
+            }
+            
+            uptTomSelectInstance = new TomSelect("#select-upt", {
+                create: false,
+                sortField: {
+                    field: "text",
+                    direction: "asc"
+                },
+                placeholder: "Ketik nama UPT...",
+                onChange: function(value) {
+                    updateWeeklyChart(); // Panggil fungsi saat UPT dipilih
+                }
+            });
         }
 
         function renderChartsData() { renderHighestChart(); renderWeeklyChart(); }
