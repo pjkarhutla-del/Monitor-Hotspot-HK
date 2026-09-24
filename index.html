@@ -573,53 +573,90 @@
             checkAllDataLoaded(filterFrom !== null);
         }
 
-        // --- FUNGSI EKSPOR DATA (.xlsx, .csv, .shp) ---
+        // --- FUNGSI EKSPOR DATA (.xlsx, .csv, .shp) DENGAN NAMA KAWASAN & UPT ---
         function exportData(type) {
             if (!hotspotGeoJSONData || !hotspotGeoJSONData.features) {
                 alert("Data hotspot belum tersedia untuk diekspor!");
                 return;
             }
-
+        
             // Filter hanya data high & medium yang valid
             const validFeatures = hotspotGeoJSONData.features.filter(f => {
                 const conf = (f.properties.confidence_level || '').toLowerCase();
                 return conf === 'high' || conf === 'medium';
             });
-
+        
             if (validFeatures.length === 0) {
                 alert("Tidak ada data hotspot untuk diekspor.");
                 return;
             }
-
-            // Format data tabular untuk Excel & CSV
-            const rows = validFeatures.map(f => {
+        
+            // Siapkan data kotak pembatas (bbox) kawasan untuk pencocokan cepat
+            const kawasanBbox = kawasanGeoJSONData.features.map((f, i) => ({ 
+                feature: f, 
+                bbox: turf.bbox(f), 
+                i: i,
+                name: f.properties.NKWS || f.properties.nama || 'Kawasan Lainnya',
+                upt: f.properties.NUPT || f.properties.upt || '-'
+            }));
+        
+            // Proses pemetaan data untuk ekspor beserta Nama Kawasan & UPT
+            const exportFeaturesWithProps = validFeatures.map(f => {
                 const p = f.properties;
-                const coords = f.geometry.coordinates;
+                const coords = f.geometry.coordinates; // [Longitude, Latitude]
+                
+                let namaKawasan = "Luar Kawasan / Tidak Diketahui";
+                let namaUpt = "-";
+        
+                // Cek posisi hotspot terhadap poligon kawasan
+                for (let k of kawasanBbox) {
+                    if (coords[0] >= k.bbox[0] && coords[0] <= k.bbox[2] && coords[1] >= k.bbox[1] && coords[1] <= k.bbox[3]) {
+                        try {
+                            if (turf.booleanPointInPolygon(f, k.feature)) {
+                                namaKawasan = k.name;
+                                namaUpt = k.upt;
+                                break;
+                            }
+                        } catch (e) {}
+                    }
+                }
+        
+                // Salin properti asli dan tambahkan properti kawasan
+                const clonedFeature = JSON.parse(JSON.stringify(f));
+                clonedFeature.properties.Nama_Kawasan = namaKawasan;
+                clonedFeature.properties.Nama_UPT = namaUpt;
+        
                 return {
-                    HS_ID: p.hs_id || '',
-                    Confidence: p.confidence_level || '',
-                    Waktu: p.date_hotspot || '',
-                    Longitude_X: coords[0],
-                    Latitude_Y: coords[1],
-                    Satelit: p.satelit || '-'
+                    feature: clonedFeature,
+                    rowObj: {
+                        HS_ID: p.hs_id || '',
+                        Confidence: p.confidence_level || '',
+                        Waktu: p.date_hotspot || '',
+                        Nama_Kawasan: namaKawasan,
+                        Nama_UPT: namaUpt,
+                        Longitude_X: coords[0],
+                        Latitude_Y: coords[1],
+                        Satelit: p.satelit || '-'
+                    }
                 };
             });
-
+        
             if (type === 'xlsx' || type === 'csv') {
+                const rows = exportFeaturesWithProps.map(item => item.rowObj);
                 const worksheet = XLSX.utils.json_to_sheet(rows);
                 const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, "DataHotspot");
-                XLSX.writeFile(workbook, `data_hotspot_export.${type}`);
+                XLSX.utils.book_append_sheet(workbook, worksheet, "DataHotspotKawasan");
+                XLSX.writeFile(workbook, `data_hotspot_kawasan_export.${type}`);
                 showToast(`Berhasil mengekspor file .${type}`);
             } else if (type === 'shp') {
-                // Membentuk ulang GeoJSON bersih khusus fitur valid untuk ekspor Shapefile ZIP
+                const cleanFeatures = exportFeaturesWithProps.map(item => item.feature);
                 const exportGeoJson = {
                     type: "FeatureCollection",
-                    features: validFeatures
+                    features: cleanFeatures
                 };
                 try {
                     shpwrite.download(exportGeoJson, {
-                        folder: 'hotspot_export',
+                        folder: 'hotspot_kawasan_export',
                         types: { point: 'hotspot_points' }
                     });
                     showToast("Berhasil mengekspor Shapefile (.zip)");
