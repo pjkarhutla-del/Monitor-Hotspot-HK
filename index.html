@@ -605,7 +605,7 @@
                 const p = f.properties;
                 const coords = f.geometry.coordinates; // [Longitude, Latitude]
                 
-                let namaKawasan = "Luar Kawasan / Tidak Diketahui";
+                let namaKawasan = "-";
                 let namaUpt = "-";
         
                 // Cek posisi hotspot terhadap poligon kawasan
@@ -623,8 +623,9 @@
         
                 // Salin properti asli dan tambahkan properti kawasan
                 const clonedFeature = JSON.parse(JSON.stringify(f));
-                clonedFeature.properties.Nama_Kawasan = namaKawasan;
-                clonedFeature.properties.Nama_UPT = namaUpt;
+                 clonedFeature.properties.NUPT = namaUpt;
+                clonedFeature.properties.NKWS = namaKawasan;
+               
         
                 return {
                     feature: clonedFeature,
@@ -632,8 +633,8 @@
                         HS_ID: p.hs_id || '',
                         Confidence: p.confidence_level || '',
                         Waktu: p.date_hotspot || '',
-                        Nama_Kawasan: namaKawasan,
-                        Nama_UPT: namaUpt,
+                        NUPT: namaUpt,
+                        NKWS: namaKawasan,
                         Longitude_X: coords[0],
                         Latitude_Y: coords[1],
                         Satelit: p.satelit || '-'
