@@ -1,0 +1,3971 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HOTSPOT DALAM KSA, KPA, TB</title>
+
+    <!-- Favicon / Icon Tab Browser -->
+    <link rel="icon" href="./Logo%20KK.png" type="image/png" />
+
+    <!-- Leaflet CSS -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Flatpickr CSS untuk Single Calendar Range -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+    />
+    <!-- Tom Select CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Tom Select JS -->
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+    <!-- Turf.js untuk Analisis Spasial -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <!-- Chart.js untuk Grafik -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS untuk Export .xlsx dan .csv -->
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <!-- jsPDF + AutoTable untuk Export PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <!-- shp-write untuk Export Shapefile (.zip) -->
+    <script src="https://unpkg.com/shp-write@latest/shpwrite.js"></script>
+
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        overflow: hidden;
+      }
+      /* Mengatur lebar kotak pencarian Tom Select UPT */
+      .chart-filter-row .ts-wrapper {
+        width: 320px !important; /* Sesuaikan ukuran panjang yang diinginkan, misal 320px atau 400px */
+        max-width: 100%;
+      }
+
+      /* Memastikan teks dropdown di dalam pilihan juga lega dan tidak terpotong */
+      .chart-filter-row {
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+      #map {
+        width: 100%;
+        height: 100vh;
+      }
+
+      /* STYLE JUDUL PETA TANPA BACKGROUND KOTAK PUTIH */
+      .map-title-box {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: transparent !important; /* Membuat background transparan */
+        box-shadow: none !important; /* Menghilangkan bayangan kotak */
+        padding: 0 !important;
+        margin-top: 15px !important;
+        margin-left: 15px !important;
+        max-width: 400px;
+      }
+      .map-logo-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      .map-title-logo {
+        width: 42px;
+        height: 42px;
+        object-fit: contain;
+        filter: drop-shadow(
+          0px 2px 4px rgba(0, 0, 0, 0.6)
+        ); /* Memberikan efek bayangan tipis pada logo agar jelas di atas satelit */
+      }
+      .map-title-text h3 {
+        margin: 0 0 2px 0;
+        font-size: 15px;
+        font-weight: 800;
+        color: #ffffff; /* Warna teks putih agar kontras di atas peta satelit */
+        line-height: 1.2;
+        text-transform: uppercase;
+        text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8); /* Bayangan teks agar tetap terbaca jelas */
+      }
+      .map-title-text .run-time {
+        margin: 0;
+        font-size: 11px;
+        color: #ffcccc; /* Warna merah muda terang agar terbaca jelas */
+        font-weight: 600;
+        text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+      }
+
+      /* --- SIDEBAR MENU TABS --- */
+      .sidebar-wrapper {
+        display: flex;
+        align-items: flex-start;
+        margin-top: 10px !important;
+        margin-left: 10px !important;
+        gap: 10px;
+        z-index: 1000;
+      }
+
+      /* Kolom Icon */
+      .sidebar-tabs {
+        display: flex;
+        flex-direction: column;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 6px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+        padding: 5px;
+        gap: 5px;
+      }
+      .tab-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 4px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-size: 18px;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .tab-icon:hover {
+        background: #f0f0f0;
+      }
+      .tab-icon.active {
+        background: #e9e9e9;
+        box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.15);
+      }
+
+      /* Panel Konten (Muncul jika Tab di-klik) */
+      .sidebar-content {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 6px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+        padding: 12px;
+        width: 270px;
+        max-height: calc(100vh - 110px);
+        overflow-y: auto;
+        display: none;
+        transition: all 0.3s ease;
+      }
+      .sidebar-pane {
+        display: none;
+      }
+      .sidebar-pane.active {
+        display: block;
+      }
+      .sidebar-pane h4 {
+        margin: 0 0 10px 0;
+        font-size: 13px;
+        font-weight: 800;
+        color: #111;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 5px;
+      }
+
+      .input-group {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 8px;
+      }
+      .input-group input,
+      .input-full {
+        width: 100%;
+        padding: 6px;
+        font-size: 11px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        outline: none;
+        box-sizing: border-box;
+      }
+      .input-full {
+        margin-bottom: 8px;
+        text-align: center;
+        cursor: pointer;
+      }
+
+      .btn-action {
+        width: 100%;
+        padding: 7px;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.2s;
+        margin-bottom: 5px;
+      }
+      .btn-blue {
+        background: #0275d8;
+      }
+      .btn-blue:hover {
+        background: #025aa5;
+      }
+      .btn-orange {
+        background: #f0ad4e;
+      }
+      .btn-orange:hover {
+        background: #ec971f;
+      }
+      .btn-purple {
+        background: #8c38d1;
+      }
+      .btn-purple:hover {
+        background: #732ab0;
+      }
+      .btn-green {
+        background: #5cb85c;
+      }
+      .btn-green:hover {
+        background: #4cae4c;
+      }
+
+      /* --- RINGKASAN KIRI BAWAH --- */
+      .hotspot-summary-box {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 10px 14px;
+        border-radius: 6px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+        border-left: 5px solid #d9534f;
+        margin-bottom: 15px !important;
+        margin-left: 10px !important;
+        min-width: 200px;
+        font-size: 12px;
+        color: #333;
+      }
+      .hotspot-summary-box h4 {
+        margin: 0 0 6px 0;
+        font-size: 12.5px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 4px;
+      }
+      .hotspot-summary-box table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .hotspot-summary-box td {
+        padding: 2px 0;
+        font-weight: 600;
+      }
+      .hotspot-summary-box td.val {
+        text-align: right;
+        font-weight: 800;
+      }
+
+      /* --- MODAL STATISTIK & GRAFIK --- */
+      .stat-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 100000;
+        display: none;
+        justify-content: center;
+        align-items: center;
+      }
+      .stat-modal-content {
+        background: #fff;
+        width: 850px;
+        max-width: 90%;
+        max-height: 85vh;
+        border-radius: 8px;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.4);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .stat-modal-header {
+        padding: 12px 16px;
+        background: #004d66;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .stat-modal-header h3 {
+        margin: 0;
+        font-size: 15px;
+      }
+      .stat-modal-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+      }
+      .stat-modal-body {
+        padding: 15px;
+        overflow-y: auto;
+        flex: 1;
+      }
+      .tab-buttons {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 8px;
+      }
+      .tab-btn {
+        padding: 6px 14px;
+        background: #e0e0e0;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+      .tab-btn.active {
+        background: #004d66;
+        color: white;
+      }
+      .tab-pane {
+        display: none;
+      }
+      .tab-pane.active {
+        display: block;
+      }
+      .chart-filter-row {
+        margin-bottom: 12px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .chart-filter-row select {
+        padding: 5px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        font-size: 12px;
+        outline: none;
+      }
+
+      /* --- LEGENDA & LAINNYA --- */
+      .legend {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 10px 15px;
+        line-height: 24px;
+        color: #333;
+        border-radius: 5px;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+      }
+      .legend h4 {
+        margin: 0 0 5px 0;
+        font-size: 13px;
+      }
+      .legend i {
+        width: 18px;
+        height: 18px;
+        float: left;
+        margin-right: 8px;
+        opacity: 0.9;
+        text-align: center;
+      }
+
+      .kawasan-dynamic-label {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #00334e;
+        font-weight: 800;
+        text-align: center;
+        white-space: normal !important;
+        word-wrap: break-word;
+        width: 120px !important;
+        margin-left: -60px !important;
+        line-height: 1.1;
+        pointer-events: none;
+        text-shadow: -1.5px -1.5px 0 #fff, 1.5px -1.5px 0 #fff,
+          -1.5px 1.5px 0 #fff, 1.5px 1.5px 0 #fff, 0px 0px 5px #fff;
+      }
+
+      .toast-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: rgba(40, 167, 69, 0.95);
+        color: white;
+        padding: 12px 18px;
+        border-radius: 6px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        font-size: 13px;
+        font-weight: 600;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transform: translateY(-50px);
+        opacity: 0;
+        transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+      }
+      .toast-notification.show {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      .toast-notification.error {
+        background: rgba(217, 83, 79, 0.97);
+      }
+
+      /* --- LOADING SCREEN --- */
+      .loading-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 25, 38, 0.65);
+        z-index: 200000;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 16px;
+        color: #fff;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.25s ease, visibility 0.25s ease;
+        backdrop-filter: blur(2px);
+      }
+      .loading-overlay.show {
+        opacity: 1;
+        visibility: visible;
+      }
+      .loading-spinner {
+        width: 56px;
+        height: 56px;
+        border: 6px solid rgba(255, 255, 255, 0.25);
+        border-top-color: #f0ad4e;
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
+      }
+      .loading-text {
+        font-size: 14px;
+        font-weight: 700;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+        text-align: center;
+        padding: 0 20px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* --- DROPDOWN KAWASAN DENGAN PENCARIAN --- */
+      .kw-combo {
+        position: relative;
+      }
+      .kw-display {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 8px;
+        font-size: 11px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: #fff;
+        cursor: pointer;
+        color: #222;
+      }
+      .kw-display span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .kw-display.open {
+        border-color: #2e8b57;
+        box-shadow: 0 0 0 2px rgba(46, 139, 87, 0.2);
+      }
+      .kw-panel {
+        display: none;
+        position: fixed;
+        margin-top: 0;
+        background: #fff;
+        border: 1px solid #bbb;
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        z-index: 5000;
+        padding: 6px;
+      }
+      .kw-panel.show {
+        display: block;
+      }
+      .kw-panel input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px 8px;
+        font-size: 11px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        outline: none;
+        margin-bottom: 6px;
+      }
+      .kw-panel input:focus {
+        border-color: #2e8b57;
+      }
+      .kw-list {
+        max-height: 190px;
+        overflow-y: auto;
+      }
+      .kw-item {
+        padding: 6px 8px;
+        font-size: 11px;
+        cursor: pointer;
+        color: #222;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .kw-item:hover {
+        background: #e3f4ea;
+      }
+      .kw-item.sel {
+        background: #cdebd9;
+        font-weight: 700;
+      }
+      .kw-empty {
+        padding: 8px;
+        font-size: 11px;
+        color: #888;
+        font-style: italic;
+      }
+      .wl-label {
+        font-size: 10.5px;
+        font-weight: 700;
+        color: #444;
+        margin: 6px 0 2px;
+      }
+      .kw-count {
+        font-size: 10px;
+        color: #888;
+        padding: 4px 2px 0;
+      }
+
+      .area-drawing,
+      .area-drawing .leaflet-interactive {
+        cursor: crosshair !important;
+      }
+      /* --- POPUP HOTSPOT --- */
+      .hs-popup {
+        font-size: 12px;
+        line-height: 1.5;
+        min-width: 220px;
+      }
+      .hs-popup .hs-title {
+        font-weight: 800;
+        font-size: 13px;
+        color: #004d66;
+        margin-bottom: 2px;
+      }
+      .hs-popup table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      .hs-popup td {
+        padding: 1px 0;
+        vertical-align: top;
+      }
+      .hs-popup td.k {
+        font-weight: 700;
+        white-space: nowrap;
+        padding-right: 8px;
+      }
+      .hs-popup hr {
+        margin: 5px 0;
+        border: 0;
+        border-top: 1px solid #ddd;
+      }
+      .hs-popup .hs-loc-loading {
+        color: #888;
+        font-style: italic;
+      }
+      .hs-popup .hs-note {
+        font-size: 10px;
+        color: #888;
+        margin-top: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <!-- LOADING SCREEN -->
+    <div id="loading-overlay" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <div class="loading-text" id="loading-text">Memuat data...</div>
+    </div>
+
+    <!-- MODAL GRAFIK & STATISTIK -->
+    <div id="stat-modal" class="stat-modal-overlay">
+      <div class="stat-modal-content">
+        <div class="stat-modal-header">
+          <h3>
+            <i class="fa-solid fa-chart-bar"></i> Statistik & Grafik Hotspot
+            Kawasan Konservasi
+          </h3>
+          <button class="stat-modal-close" onclick="toggleStatModal(false)">
+            &times;
+          </button>
+        </div>
+        <div class="stat-modal-body">
+          <div class="tab-buttons">
+            <button
+              class="tab-btn active"
+              onclick="switchModalTab(event, 'modal-tab-highest')"
+            >
+              Top NKWS (High & Medium)
+            </button>
+            <button
+              class="tab-btn"
+              onclick="switchModalTab(event, 'modal-tab-weekly')"
+            >
+              Tren Hotspot 1 Minggu Terakhir (by UPT)
+            </button>
+          </div>
+
+          <!-- TAB 1: NKWS TERTINGGI -->
+          <div id="modal-tab-highest" class="tab-pane active">
+            <div class="chart-filter-row">
+              <span
+                >Menampilkan 10 NKWS dengan Hotspot Terbanyak (Berdasarkan
+                rentang tanggal aktif)</span
+              >
+            </div>
+            <div style="position: relative; height: 350px; width: 100%">
+              <canvas id="chartHighestNKWS"></canvas>
+            </div>
+          </div>
+
+          <!-- TAB 2: TREN MINGGUAN -->
+          <div id="modal-tab-weekly" class="tab-pane">
+            <div class="chart-filter-row">
+              <label for="select-upt">Cari / Pilih Nama UPT (NUPT):</label>
+              <select id="select-upt" onchange="updateWeeklyChart()">
+                <option value="">-- Ketik atau Pilih UPT --</option>
+              </select>
+            </div>
+            <div style="position: relative; height: 350px; width: 100%">
+              <canvas id="chartWeeklyUpt"></canvas>
+            </div>
+          </div>
+          <!-- <-- PENUTUP TAB-PANE YANG BENAR ADA DI SINI -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="success-toast" class="toast-notification">
+      <i class="fa-solid fa-circle-check"></i>
+      <span id="toast-message">Data berhasil dimuat!</span>
+    </div>
+
+    <!-- Leaflet & Flatpickr JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/id.js"></script>
+
+    <script>
+      const DEFAULT_HOTSPOT_URL =
+        "https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=false&from=&to=&late=custom&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=";
+      let dateFilterActive = false;
+      let currentActiveDateRange = "Semua Periode / Belum Difilter";
+      let chartHighestInstance = null;
+      let chartWeeklyInstance = null;
+      let weeklyHotspotRawList = [];
+
+      function showToast(message, isError = false) {
+        const toast = document.getElementById("success-toast");
+        document.getElementById("toast-message").innerText = message;
+        toast.classList.toggle("error", isError);
+        toast.querySelector("i").className = isError
+          ? "fa-solid fa-triangle-exclamation"
+          : "fa-solid fa-circle-check";
+        toast.classList.add("show");
+        setTimeout(() => {
+          toast.classList.remove("show");
+        }, 3500);
+      }
+
+      // --- TANGGAL HOTSPOT DALAM WIB ---
+      // hs_id dari API berformat UTC (mis. 2026-10-12T23:09:00Z = 13 Okt 06:09 WIB).
+      // Semua pencocokan tanggal harus memakai tanggal WIB (UTC+7), bukan 10 karakter pertama hs_id.
+      function toWIBDate(d) {
+        return new Date(d.getTime() + 7 * 3600 * 1000)
+          .toISOString()
+          .substring(0, 10);
+      }
+      function hsDateWIB(hsId) {
+        if (!hsId || hsId.length < 19) return null;
+        const t = Date.parse(hsId.substring(0, 19) + "Z");
+        return isNaN(t) ? null : toWIBDate(new Date(t));
+      }
+
+      // --- LOADING SCREEN ---
+      function showLoading(message = "Memuat data...") {
+        document.getElementById("loading-text").innerText = message;
+        document.getElementById("loading-overlay").classList.add("show");
+      }
+      function hideLoading() {
+        document.getElementById("loading-overlay").classList.remove("show");
+      }
+      // Jalankan fungsi berat setelah loading screen sempat tampil di layar
+      function runAfterPaint(fn) {
+        requestAnimationFrame(() => setTimeout(fn, 30));
+      }
+
+      // --- LOKASI ADMINISTRATIF (DESA, KOTA, PROVINSI) UNTUK POPUP HOTSPOT ---
+      const LOC_KEYS = {
+        desa: ["desa", "nama_desa", "kelurahan"],
+        kecamatan: ["kecamatan", "nama_kecamatan"],
+        kota: ["kabkota", "kab_kota", "nama_kabkota", "kabupaten", "kota"],
+        provinsi: ["nama_provinsi", "provinsi", "province"],
+      };
+      const escHtml = (v) =>
+        String(v).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            }[c])
+        );
+      function pickProp(p, keys) {
+        for (const k of keys) {
+          const v = p[k];
+          if (
+            v !== undefined &&
+            v !== null &&
+            String(v).trim() !== "" &&
+            String(v).trim() !== "-"
+          )
+            return String(v).trim();
+        }
+        return "-";
+      }
+
+      function buildHotspotPopup(p, pt, kawasanItem) {
+        const div = document.createElement("div");
+        div.className = "hs-popup";
+        const kawasanTxt = kawasanItem
+          ? escHtml(kawasanItem.name)
+          : "<i>Di luar kawasan konservasi</i>";
+        const uptRow = kawasanItem
+          ? `<tr><td class="k">UPT</td><td>: ${escHtml(
+              kawasanItem.upt
+            )}</td></tr>`
+          : "";
+        div.innerHTML = `
+                <div class="hs-title"><i class="fa-solid fa-fire"></i> Informasi Hotspot</div>
+                <table>
+                    <tr><td class="k">Kawasan</td><td>: <b>${kawasanTxt}</b></td></tr>
+                    ${uptRow}
+                    <tr><td class="k">Desa</td><td>: ${escHtml(
+                      pickProp(p, LOC_KEYS.desa)
+                    )}</td></tr>
+                    <tr><td class="k">Kecamatan</td><td>: ${escHtml(
+                      pickProp(p, LOC_KEYS.kecamatan)
+                    )}</td></tr>
+                    <tr><td class="k">Kota/Kab.</td><td>: ${escHtml(
+                      pickProp(p, LOC_KEYS.kota)
+                    )}</td></tr>
+                    <tr><td class="k">Provinsi</td><td>: ${escHtml(
+                      pickProp(p, LOC_KEYS.provinsi)
+                    )}</td></tr>
+                </table>
+                <hr>
+                <table>
+                    <tr><td class="k">Confidence</td><td>: ${escHtml(
+                      p.confidence_level || "-"
+                    )}</td></tr>
+                    <tr><td class="k">Waktu</td><td>: ${escHtml(
+                      p.date_hotspot || "-"
+                    )} WIB</td></tr>
+                    <tr><td class="k">X, Y</td><td>: ${pt[0].toFixed(
+                      5
+                    )}, ${pt[1].toFixed(5)}</td></tr>
+                </table>
+            `;
+        return div;
+      }
+
+      function toggleStatModal(show) {
+        const modal = document.getElementById("stat-modal");
+        modal.style.display = show ? "flex" : "none";
+        if (show) renderChartsData();
+      }
+
+      function switchModalTab(evt, tabId) {
+        document
+          .querySelectorAll(".stat-modal-body .tab-pane")
+          .forEach((el) => el.classList.remove("active"));
+        document
+          .querySelectorAll(".stat-modal-body .tab-btn")
+          .forEach((el) => el.classList.remove("active"));
+        document.getElementById(tabId).classList.add("active");
+        evt.currentTarget.classList.add("active");
+        if (tabId === "modal-tab-highest") renderHighestChart();
+        else renderWeeklyChart();
+      }
+
+      // 1. Inisialisasi Peta
+      const osm = L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        { maxZoom: 19, attribution: "&copy; OpenStreetMap" }
+      );
+      const esriSatelit = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        { maxZoom: 19, attribution: "Tiles &copy; Esri" }
+      );
+      const googleSatelit = L.tileLayer(
+        "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+        { maxZoom: 20, attribution: "&copy; Google Maps" }
+      );
+
+      const map = L.map("map", {
+        center: [-2.548926, 118.014863],
+        zoom: 5,
+        zoomControl: false,
+        preferCanvas: true,
+        layers: [esriSatelit],
+      });
+      L.control.zoom({ position: "topright" }).addTo(map);
+
+      // Judul Peta
+      const titleControl = L.control({ position: "topleft" });
+      titleControl.onAdd = function () {
+        const div = L.DomUtil.create("div", "map-title-box");
+        const now = new Date();
+
+        // Format Hari, Tanggal | Jam Akses (Contoh: Kamis, 24 September 2026 | 19:48:59 WIB)
+        const options = {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        };
+        const tanggalStr = now.toLocaleDateString("id-ID", options);
+        const jamStr = `${String(now.getHours()).padStart(2, "0")}:${String(
+          now.getMinutes()
+        ).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")} WIB`;
+
+        div.innerHTML = `
+                <div class="map-logo-container">
+                    <img src="./logo%20kehutanan.png" alt="Logo Kehutanan" class="map-title-logo">
+                    <img src="./Logo%20KK.png" alt="Logo Konservasi" class="map-title-logo">
+                </div>
+                <div class="map-title-text">
+                    <h3>HOTSPOT HUTAN KONSERVASI</h3>
+                    <p class="run-time"><i class="fa-regular fa-clock"></i> Diproses : ${tanggalStr} | ${jamStr}</p>
+                </div>
+            `;
+        return div;
+      };
+      titleControl.addTo(map);
+
+      // --- MENU SIDEBAR TAB ---
+      const sidebarControl = L.control({ position: "topleft" });
+      sidebarControl.onAdd = function () {
+        const wrapper = L.DomUtil.create("div", "sidebar-wrapper");
+        wrapper.innerHTML = `
+                <div class="sidebar-tabs">
+                    <button class="tab-icon" id="btn-tab-filter" onclick="toggleSidebarTab('filter')" title="Filter (Tanggal, UPT, Kawasan, Wilayah)">
+                        <i class="fa-solid fa-filter" style="color:#f0ad4e"></i>
+                    </button>
+                    <button class="tab-icon" id="btn-tab-stat" onclick="toggleSidebarTab('stat')" title="Grafik & Statistik">
+                        <i class="fa-solid fa-chart-pie" style="color:#8c38d1"></i>
+                    </button>
+                    <button class="tab-icon" id="btn-tab-export" onclick="toggleSidebarTab('export')" title="Ekspor Data">
+                        <i class="fa-solid fa-file-arrow-down" style="color:#5cb85c"></i>
+                    </button>
+                    <button class="tab-icon" id="btn-reset-all-icon" onclick="resetAllFilters()" title="Reset Semua Filter" style="border-top:1px solid #ddd; border-radius:0 0 4px 4px; margin-top:2px;">
+                        <i class="fa-solid fa-arrow-rotate-left" style="color:#d9534f"></i>
+                    </button>
+                </div>
+                
+                <div class="sidebar-content" id="sidebar-content">
+                    <div id="pane-filter" class="sidebar-pane">
+                        <h4><i class="fa-solid fa-filter"></i> Filter Hotspot</h4>
+                        <div class="wl-label" style="margin-top:0;">Rentang Tanggal</div>
+                        <input type="text" id="input-date-range" class="input-full" placeholder="Pilih Rentang Tanggal..." readonly>
+                        <div class="wl-label">UPT</div><div id="combo-upt-filter"></div>
+                        <div class="wl-label">Kawasan</div><div id="combo-kawasan"></div>
+                        <div class="wl-label">Provinsi</div><div id="combo-provinsi"></div>
+                        <div class="wl-label">Kota / Kabupaten</div><div id="combo-kota"></div>
+                        <div class="wl-label">Kecamatan</div><div id="combo-kecamatan"></div>
+                        <div class="wl-label">Desa</div><div id="combo-desa"></div>
+                        <div class="wl-label">Cari Koordinat (opsional)</div>
+                        <div class="input-group" style="margin-bottom:0;">
+                            <input type="number" id="input-lat" placeholder="Lat (cth: -2.5)" step="any">
+                            <input type="number" id="input-lng" placeholder="Long (cth: 118.0)" step="any">
+                        </div>
+                        <div style="height:10px;"></div>
+                        <button class="btn-action btn-orange" onclick="applyAllFilters()"><i class="fa-solid fa-filter"></i> Terapkan Filter</button>
+                        <button class="btn-action" style="background:#d9534f;" onclick="resetAllFilters()"><i class="fa-solid fa-arrow-rotate-left"></i> Reset Semua Filter</button>
+                        <p id="filter-info" style="font-size:11px; color:#555; margin:4px 0 0 0; line-height:1.4; white-space:pre-line;">Menampilkan semua hotspot.</p>
+                    </div>
+
+                    <div id="pane-stat" class="sidebar-pane">
+                        <h4><i class="fa-solid fa-chart-pie"></i> Statistik Hotspot</h4>
+                        <p style="font-size:11px; color:#555; margin-bottom:10px; line-height:1.4;">Buka panel lengkap untuk melihat chart bar Top Kawasan & Line chart tren mingguan.</p>
+                        <button class="btn-action btn-purple" onclick="toggleStatModal(true)"><i class="fa-solid fa-chart-bar"></i> Buka Grafik</button>
+                    </div>
+
+                    <div id="pane-export" class="sidebar-pane">
+                        <h4><i class="fa-solid fa-file-arrow-down"></i> Ekspor Data Hotspot</h4>
+                        <p style="font-size:11px; color:#555; margin-bottom:10px; line-height:1.4;">Unduh data hotspot yang sedang tampil (sesuai filter yang diterapkan):</p>
+                        <button class="btn-action" style="background:#d9534f;" onclick="exportData('pdf')"><i class="fa-solid fa-file-pdf"></i> Ekspor ke .PDF (Landscape)</button>
+                        <button class="btn-action btn-green" onclick="exportData('xlsx')"><i class="fa-solid fa-file-excel"></i> Ekspor ke .XLSX</button>
+                        <button class="btn-action btn-green" onclick="exportData('csv')"><i class="fa-solid fa-file-csv"></i> Ekspor ke .CSV</button>
+                        <button class="btn-action btn-green" onclick="exportData('shp')"><i class="fa-solid fa-file-zipper"></i> Ekspor ke .SHP (.zip)</button>
+                        <hr style="margin:10px 0 8px; border:0; border-top:1px solid #ddd;">
+                        <div class="wl-label" style="margin-top:0; font-size:12px; color:#111;"><i class="fa-solid fa-map"></i> Peta ke PDF (dengan Grid)</div>
+                        <p style="font-size:11px; color:#555; margin:4px 0 8px; line-height:1.4;">Simpan gambar peta yang sedang tampil sesuai filter: hotspot, batas kawasan, label, popup yang sedang terbuka, legenda, skala &amp; grid koordinat.</p>
+                        <div class="wl-label">Select Area (Polygon)</div>
+                        <button id="btn-area-draw" class="btn-action btn-blue" onclick="startAreaDraw()"><i class="fa-solid fa-draw-polygon"></i> Gambar Area</button>
+                        <button id="btn-area-finish" class="btn-action btn-green" style="display:none;" onclick="finishAreaDraw()"><i class="fa-solid fa-check"></i> Selesai (tutup polygon)</button>
+                        <button id="btn-area-undo" class="btn-action btn-orange" style="display:none;" onclick="undoAreaPoint()"><i class="fa-solid fa-rotate-left"></i> Hapus Titik Terakhir</button>
+                        <button class="btn-action" style="background:#d9534f;" onclick="clearArea()"><i class="fa-solid fa-trash"></i> Hapus Area / Batal</button>
+                        <p id="area-info" style="font-size:11px; color:#555; margin:0 0 8px; line-height:1.4;">Belum ada area. Klik "Gambar Area" lalu klik titik-titik di peta.</p>
+                        <div class="wl-label">Cetak PDF dari</div>
+                        <label style="display:flex; align-items:center; gap:6px; font-size:11px; margin-bottom:4px; cursor:pointer;"><input type="radio" name="pdfmap-source" value="filter" checked> Tampilan peta &amp; filter saat ini</label>
+                        <label style="display:flex; align-items:center; gap:6px; font-size:11px; margin-bottom:8px; cursor:pointer;"><input type="radio" name="pdfmap-source" value="area" id="pdfmap-source-area" disabled> Area terpilih (polygon)</label>
+                        <div class="wl-label">Ukuran Kertas (Landscape)</div>
+                        <select id="pdfmap-paper" class="input-full" style="text-align:left;">
+                            <option value="a4">A4</option>
+                            <option value="a3">A3</option>
+                        </select>
+                        <label style="display:flex; align-items:center; gap:6px; font-size:11px; margin-bottom:6px; cursor:pointer;"><input type="checkbox" id="pdfmap-grid" checked> Tampilkan grid koordinat</label>
+                        <label style="display:flex; align-items:flex-start; gap:6px; font-size:11px; margin-bottom:8px; cursor:pointer; line-height:1.3;"><input type="checkbox" id="pdfmap-allpopup" style="margin-top:2px;"> Cetak popup semua hotspot yang tampil (maks. 15 hotspot)</label>
+                        <button class="btn-action" style="background:#c0392b;" onclick="exportMapPdf()"><i class="fa-solid fa-file-pdf"></i> Unduh Peta (.PDF)</button>
+                    </div>
+                </div>
+            `;
+        L.DomEvent.disableClickPropagation(wrapper);
+        L.DomEvent.disableScrollPropagation(wrapper);
+        return wrapper;
+      };
+      sidebarControl.addTo(map);
+
+      function toggleSidebarTab(targetTab) {
+        const contentBox = document.getElementById("sidebar-content");
+        const targetBtn = document.getElementById(`btn-tab-${targetTab}`);
+        const isActive = targetBtn.classList.contains("active");
+
+        document
+          .querySelectorAll(".tab-icon")
+          .forEach((btn) => btn.classList.remove("active"));
+        document
+          .querySelectorAll(".sidebar-pane")
+          .forEach((pane) => pane.classList.remove("active"));
+
+        if (isActive) {
+          contentBox.style.display = "none";
+        } else {
+          targetBtn.classList.add("active");
+          contentBox.style.display = "block";
+          document.getElementById(`pane-${targetTab}`).classList.add("active");
+
+          if (targetTab === "search")
+            contentBox.style.borderLeft = "4px solid #0275d8";
+          if (targetTab === "filter")
+            contentBox.style.borderLeft = "4px solid #f0ad4e";
+          if (targetTab === "wilayah")
+            contentBox.style.borderLeft = "4px solid #17a2b8";
+          if (targetTab === "kawasan")
+            contentBox.style.borderLeft = "4px solid #2e8b57";
+          if (targetTab === "stat")
+            contentBox.style.borderLeft = "4px solid #8c38d1";
+          if (targetTab === "export")
+            contentBox.style.borderLeft = "4px solid #5cb85c";
+        }
+      }
+
+      let datePickerInstance = null;
+      setTimeout(() => {
+        datePickerInstance = flatpickr("#input-date-range", {
+          mode: "range",
+          dateFormat: "Y-m-d",
+          locale: "id",
+          altInput: true,
+          altFormat: "j M Y",
+          conjunction: " - ",
+        });
+      }, 200);
+
+      let searchMarker = null;
+      // Menandai koordinat & terbang ke lokasi (dipanggil dari Terapkan Filter)
+      function goToCoordinate(lat, lng) {
+        if (searchMarker) map.removeLayer(searchMarker);
+        map.flyTo([lat, lng], 14, { animate: true, duration: 1.5 });
+        searchMarker = L.marker([lat, lng])
+          .addTo(map)
+          .bindPopup(`<b>X, Y :</b> ${lng}, ${lat}`)
+          .openPopup();
+      }
+      function clearCoordinate() {
+        if (searchMarker) {
+          map.removeLayer(searchMarker);
+          searchMarker = null;
+        }
+        document.getElementById("input-lat").value = "";
+        document.getElementById("input-lng").value = "";
+      }
+
+      const summaryControl = L.control({ position: "bottomleft" });
+      summaryControl.onAdd = function () {
+        const div = L.DomUtil.create("div", "hotspot-summary-box");
+        div.innerHTML = `
+                <h4 id="summary-title">Hotspot Hutan Konservasi</h4>
+                <table>
+                    <tr><td>High</td><td>:</td><td class="val" id="cnt-high" style="color:red;">...</td></tr>
+                    <tr><td>Medium</td><td>:</td><td class="val" id="cnt-medium" style="color:#d99b00;">...</td></tr>
+                    <tr style="border-top:1px dashed #ccc;"><td><b>Total</b></td><td>:</td><td class="val" id="cnt-total" style="color:#111;">...</td></tr>
+                </table>
+                <button class="btn-action" style="background:#d9534f; margin:8px 0 0 0;" onclick="resetAllFilters()"><i class="fa-solid fa-arrow-rotate-left"></i> Reset Semua Filter</button>
+            `;
+        L.DomEvent.disableClickPropagation(div);
+        return div;
+      };
+      summaryControl.addTo(map);
+
+      const hotspotDalamLayer = L.layerGroup().addTo(map);
+      const hotspotLuarLayer = L.layerGroup().addTo(map);
+      const kawasanLayer = L.layerGroup().addTo(map);
+      const labelKawasanGroup = L.layerGroup().addTo(map);
+
+      let kawasanGeoJSONData = null,
+        hotspotGeoJSONData = null,
+        kawasanFeatures = [];
+      let isKawasanLoaded = false,
+        isHotspotLoaded = false;
+      const MIN_ZOOM_LABEL = 9;
+
+      function checkAllDataLoaded(isFilter = false, toastMsg = null) {
+        if (isKawasanLoaded && isHotspotLoaded) {
+          showToast(
+            toastMsg ||
+              (isFilter ? "Data tanggal diperbarui!" : "Data utama siap!")
+          );
+          if (!uptTomSelectInstance) populateUptDropdown();
+          hideLoading();
+        }
+      }
+
+      // --- FILTER KAWASAN ---
+      let activeKawasanIdx = null; // index kawasanFeatures yang dipilih (null = semua)
+      let kawasanBboxCache = null;
+      const KAWASAN_STYLE = {
+        color: "#8c38d1",
+        weight: 2,
+        opacity: 0.9,
+        fillColor: "#8c38d1",
+        fillOpacity: 0.05,
+      };
+      const KAWASAN_STYLE_ACTIVE = {
+        color: "#ff9800",
+        weight: 4,
+        opacity: 1,
+        fillColor: "#ff9800",
+        fillOpacity: 0.18,
+      };
+
+      // --- Tampilan awal peta (seluruh Indonesia) ---
+      const INDONESIA_VIEW = { center: [-2.548926, 118.014863], zoom: 5 };
+      function zoomToIndonesia() {
+        map.flyTo(INDONESIA_VIEW.center, INDONESIA_VIEW.zoom, {
+          animate: true,
+          duration: 1.2,
+        });
+      }
+
+      // --- Dropdown dengan kolom pencarian (tanpa library) ---
+      const allComboClosers = []; // semua dropdown terdaftar di sini agar hanya satu yang terbuka
+      function closeAllCombos(except = null) {
+        allComboClosers.forEach((c) => {
+          if (c !== except) c();
+        });
+      }
+      function makeCombo(rootId, allLabel, searchPlaceholder, onChange) {
+        const root = document.getElementById(rootId);
+        root.className = "kw-combo";
+        root.innerHTML = `
+                <div class="kw-display"><span class="kw-text"></span><i class="fa-solid fa-chevron-down"></i></div>
+                <div class="kw-panel">
+                    <input type="text" placeholder="&#128269; ${searchPlaceholder}" autocomplete="off">
+                    <div class="kw-list"></div>
+                    <div class="kw-count"></div>
+                </div>`;
+        const display = root.querySelector(".kw-display"),
+          textEl = root.querySelector(".kw-text");
+        const panel = root.querySelector(".kw-panel"),
+          input = panel.querySelector("input");
+        const list = root.querySelector(".kw-list"),
+          countEl = root.querySelector(".kw-count");
+        let items = [],
+          value = null;
+        const MAX = 200;
+
+        const labelOf = (v) => {
+          const it = items.find((x) => x.value === v);
+          return it ? it.label : null;
+        };
+        function paintText() {
+          const l = value === null ? null : labelOf(value);
+          textEl.textContent = l === null ? `-- ${allLabel} --` : l;
+        }
+        function close() {
+          panel.classList.remove("show");
+          display.classList.remove("open");
+        }
+        // Panel melayang (position: fixed) agar tidak terpotong area scroll sidebar; buka ke atas jika ruang bawah sempit
+        function place() {
+          const r = display.getBoundingClientRect();
+          panel.style.left = r.left + "px";
+          panel.style.width = r.width + "px";
+          if (
+            window.innerHeight - r.bottom < 300 &&
+            r.top > window.innerHeight - r.bottom
+          ) {
+            panel.style.top = "auto";
+            panel.style.bottom = window.innerHeight - r.top + 2 + "px";
+          } else {
+            panel.style.bottom = "auto";
+            panel.style.top = r.bottom + 2 + "px";
+          }
+        }
+        function render(q) {
+          const query = (q || "").trim().toLowerCase();
+          const hits = items.filter(
+            (o) => !query || o.label.toLowerCase().includes(query)
+          );
+          list.innerHTML = "";
+          const add = (label, val) => {
+            const div = document.createElement("div");
+            div.className = "kw-item" + (val === value ? " sel" : "");
+            div.textContent = label;
+            div.addEventListener("click", () => {
+              value = val;
+              paintText();
+              close();
+              if (onChange) onChange(value);
+            });
+            list.appendChild(div);
+          };
+          if (!query) add(`-- ${allLabel} --`, null);
+          hits.slice(0, MAX).forEach((o) => add(o.label, o.value));
+          if (!hits.length)
+            list.innerHTML = '<div class="kw-empty">Tidak ditemukan</div>';
+          countEl.textContent =
+            hits.length +
+            " pilihan" +
+            (hits.length > MAX
+              ? ` (tampil ${MAX} pertama, ketik untuk mempersempit)`
+              : "");
+        }
+        display.addEventListener("click", () => {
+          if (panel.classList.contains("show")) {
+            close();
+            return;
+          }
+          closeAllCombos(close); // tutup dropdown lain
+          place();
+          panel.classList.add("show");
+          display.classList.add("open");
+          input.value = "";
+          render("");
+          setTimeout(() => input.focus(), 0);
+        });
+        input.addEventListener("input", () => render(input.value));
+        input.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter") {
+            const first = list.querySelector(".kw-item:not(.sel), .kw-item");
+            if (first) first.click();
+          }
+          if (ev.key === "Escape") close();
+        });
+        // fase capture: tetap terpanggil walau Leaflet menghentikan propagasi event di sidebar
+        document.addEventListener(
+          "mousedown",
+          (ev) => {
+            if (!root.contains(ev.target)) close();
+          },
+          true
+        );
+        document.addEventListener(
+          "touchstart",
+          (ev) => {
+            if (!root.contains(ev.target)) close();
+          },
+          true
+        );
+        // sidebar di-scroll / jendela diubah ukurannya -> tutup agar posisi tidak meleset
+        document.addEventListener(
+          "scroll",
+          (ev) => {
+            if (panel.classList.contains("show") && !panel.contains(ev.target))
+              close();
+          },
+          true
+        );
+        window.addEventListener("resize", close);
+        allComboClosers.push(close);
+        paintText();
+        return {
+          setItems(arr) {
+            items = arr;
+            if (value !== null && labelOf(value) === null) value = null;
+            paintText();
+          },
+          getValue() {
+            return value;
+          },
+          setValue(v) {
+            value = v;
+            paintText();
+          },
+          close,
+        };
+      }
+
+      // --- FILTER UPT + KAWASAN (dropdown) ---
+      let kawasanCombo = null,
+        uptFilterCombo = null;
+      let activeUpt = null; // nama UPT yang dipilih (null = semua UPT)
+
+      // Daftar kawasan mengikuti UPT yang dipilih
+      function refreshKawasanOptions() {
+        if (!kawasanCombo) return;
+        const upt = uptFilterCombo ? uptFilterCombo.getValue() : null;
+        kawasanCombo.setItems(
+          kawasanFeatures
+            .map((k, i) => ({ label: k.name, value: String(i), upt: k.upt }))
+            .filter((o) => upt === null || o.upt === upt)
+            .sort((a, b) => a.label.localeCompare(b.label, "id"))
+        );
+      }
+
+      function populateKawasanDropdown() {
+        uptFilterCombo = makeCombo(
+          "combo-upt-filter",
+          "Semua UPT",
+          "Cari nama UPT...",
+          () => {
+            if (kawasanCombo) kawasanCombo.setValue(null); // kawasan dikosongkan saat UPT diganti
+            refreshKawasanOptions();
+          }
+        );
+        const upts = [
+          ...new Set(
+            kawasanFeatures.map((k) => k.upt).filter((u) => u && u !== "-")
+          ),
+        ].sort((a, b) => a.localeCompare(b, "id"));
+        uptFilterCombo.setItems(upts.map((u) => ({ label: u, value: u })));
+        kawasanCombo = makeCombo(
+          "combo-kawasan",
+          "Semua Kawasan",
+          "Cari nama kawasan..."
+        );
+        refreshKawasanOptions();
+      }
+
+      // --- RESET SEMUA FILTER (kawasan, wilayah, tanggal) ---
+      function resetAllFilters() {
+        if (!isKawasanLoaded) {
+          showToast("Data belum selesai dimuat.", true);
+          return;
+        }
+        closeAllCombos();
+        pendingZoom = false;
+        pendingApplyMsg = null;
+        pendingCoord = null;
+        clearCoordinate();
+        showLoading("Mereset semua filter...");
+        runAfterPaint(() => {
+          activeKawasanIdx = null;
+          activeUpt = null;
+          activeWilayah = null;
+          if (uptFilterCombo) uptFilterCombo.setValue(null);
+          if (kawasanCombo) kawasanCombo.setValue(null);
+          refreshKawasanOptions();
+          WL_LEVELS.forEach(
+            (l) => wilayahCombos[l] && wilayahCombos[l].setValue(null)
+          );
+          if (datePickerInstance) datePickerInstance.clear();
+          zoomToIndonesia();
+          if (dateFilterActive) {
+            // filter tanggal sedang aktif -> muat ulang data default (semua periode)
+            dateFilterActive = false;
+            currentActiveDateRange = "Semua Periode / Belum Difilter";
+            loadHotspotData(DEFAULT_HOTSPOT_URL); // loading ditutup otomatis setelah data selesai diproses
+          } else {
+            refreshWilayahOptions();
+            processHotspotLayers(null, "Semua filter direset!");
+            hideLoading();
+          }
+        });
+      }
+
+      // --- TERAPKAN SEMUA FILTER SEKALIGUS (tanggal + UPT + kawasan + wilayah) ---
+      let pendingZoom = false,
+        pendingApplyMsg = null,
+        pendingCoord = null;
+
+      function anySpatialFilter() {
+        return (
+          activeKawasanIdx !== null ||
+          activeUpt !== null ||
+          activeWilayah !== null
+        );
+      }
+
+      function zoomToActiveFilters() {
+        if (activeWilayah) {
+          if (displayedBounds && displayedBounds.isValid())
+            map.fitBounds(displayedBounds, { maxZoom: 13, padding: [50, 50] });
+          else if (activeKawasanIdx !== null)
+            map.fitBounds(kawasanFeatures[activeKawasanIdx].layer.getBounds(), {
+              maxZoom: 13,
+              padding: [40, 40],
+            });
+          else showToast("Tidak ada hotspot pada wilayah tersebut.", true);
+        } else if (activeKawasanIdx !== null) {
+          map.fitBounds(kawasanFeatures[activeKawasanIdx].layer.getBounds(), {
+            maxZoom: 13,
+            padding: [40, 40],
+          });
+        } else if (activeUpt !== null) {
+          const b = L.latLngBounds([]);
+          kawasanFeatures.forEach((k) => {
+            if (k.upt === activeUpt) b.extend(k.layer.getBounds());
+          });
+          if (b.isValid()) map.fitBounds(b, { maxZoom: 13, padding: [40, 40] });
+        } else {
+          zoomToIndonesia();
+        }
+      }
+
+      function applyAllFilters() {
+        if (!isKawasanLoaded || !kawasanCombo) {
+          showToast("Data kawasan belum selesai dimuat.", true);
+          return;
+        }
+        if (!datePickerInstance) return;
+        const dates = datePickerInstance.selectedDates;
+        if (dates.length === 1) {
+          alert("Pilih rentang tanggal lengkap (tanggal awal dan akhir)!");
+          return;
+        }
+
+        // Koordinat (opsional): harus diisi lengkap lintang & bujur
+        const latStr = document.getElementById("input-lat").value.trim(),
+          lngStr = document.getElementById("input-lng").value.trim();
+        let coord = null;
+        if (latStr !== "" || lngStr !== "") {
+          const lat = parseFloat(latStr),
+            lng = parseFloat(lngStr);
+          if (
+            isNaN(lat) ||
+            isNaN(lng) ||
+            lat < -90 ||
+            lat > 90 ||
+            lng < -180 ||
+            lng > 180
+          ) {
+            alert(
+              "Masukkan koordinat valid (Lat -90 s/d 90, Long -180 s/d 180)!"
+            );
+            return;
+          }
+          coord = { lat, lng };
+        }
+
+        const kv = kawasanCombo.getValue(),
+          uv = uptFilterCombo.getValue(),
+          wsel = currentWilayahSelection();
+        const newKawasan = kv === null ? null : parseInt(kv, 10);
+        const newWilayah = WL_LEVELS.some((l) => wsel[l] !== null)
+          ? wsel
+          : null;
+        const dateFrom =
+          dates.length === 2 ? flatpickr.formatDate(dates[0], "Y-m-d") : null;
+        const dateTo =
+          dates.length === 2 ? flatpickr.formatDate(dates[1], "Y-m-d") : null;
+        const newRange = dateFrom ? `${dateFrom} s/d ${dateTo}` : null;
+        const oldRange = dateFilterActive ? currentActiveDateRange : null;
+
+        showLoading("Menerapkan filter...");
+        activeKawasanIdx = newKawasan;
+        activeUpt = uv;
+        activeWilayah = newWilayah;
+        pendingZoom = true;
+        pendingCoord = coord;
+        if (!coord && searchMarker) {
+          map.removeLayer(searchMarker);
+          searchMarker = null;
+        } // koordinat dikosongkan -> hapus penanda
+        pendingApplyMsg = "Filter diterapkan!";
+
+        if (newRange !== oldRange) {
+          // rentang tanggal berubah -> ambil ulang data dari API; filter lain diterapkan setelah data selesai dimuat
+          if (newRange) {
+            dateFilterActive = true;
+            currentActiveDateRange = newRange;
+            const url = `https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=true&from=${dateFrom}&to=${dateTo}&late=custom&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=`;
+            loadHotspotData(url, dateFrom);
+          } else {
+            dateFilterActive = false;
+            currentActiveDateRange = "Semua Periode / Belum Difilter";
+            loadHotspotData(DEFAULT_HOTSPOT_URL);
+          }
+        } else {
+          runAfterPaint(() => {
+            processHotspotLayers(null, null);
+          });
+        }
+      }
+
+      // --- FILTER WILAYAH (Provinsi > Kota/Kab > Kecamatan > Desa), diambil dari data indoHotspot ---
+      const WL_LEVELS = ["prov", "kota", "kec", "desa"];
+      let wilayahCombos = {};
+      let wilayahRows = []; // [{prov, kota, kec, desa}] dari hotspot high & medium
+      let activeWilayah = null; // {prov, kota, kec, desa} (null = tidak difilter)
+      let displayedBounds = null; // batas marker yang sedang tampil
+      let displayedHotspots = []; // hotspot yang sedang tampil (sumber data ekspor)
+
+      function hotspotWilayah(p) {
+        return {
+          prov: pickProp(p, LOC_KEYS.provinsi),
+          kota: pickProp(p, LOC_KEYS.kota),
+          kec: pickProp(p, LOC_KEYS.kecamatan),
+          desa: pickProp(p, LOC_KEYS.desa),
+        };
+      }
+      function matchWilayah(w, f) {
+        return WL_LEVELS.every(
+          (l) => f[l] === null || f[l] === undefined || w[l] === f[l]
+        );
+      }
+      function currentWilayahSelection() {
+        const sel = {};
+        WL_LEVELS.forEach((l) => {
+          sel[l] = wilayahCombos[l] ? wilayahCombos[l].getValue() : null;
+        });
+        return sel;
+      }
+      // Isi opsi tiap level sesuai pilihan level di atasnya (bertingkat)
+      function refreshWilayahOptions() {
+        if (!wilayahCombos.prov) return;
+        const sel = currentWilayahSelection();
+        WL_LEVELS.forEach((lvl, i) => {
+          const parent = {};
+          WL_LEVELS.slice(0, i).forEach((l) => (parent[l] = sel[l]));
+          const set = new Set();
+          wilayahRows.forEach((r) => {
+            if (matchWilayah(r, parent)) set.add(r[lvl]);
+          });
+          const arr = [...set]
+            .sort((a, b) => a.localeCompare(b, "id"))
+            .map((v) => ({ label: v, value: v }));
+          wilayahCombos[lvl].setItems(arr);
+        });
+      }
+      function initWilayahCombos() {
+        const cfg = {
+          prov: ["Semua Provinsi", "Cari provinsi..."],
+          kota: ["Semua Kota/Kab.", "Cari kota/kabupaten..."],
+          kec: ["Semua Kecamatan", "Cari kecamatan..."],
+          desa: ["Semua Desa", "Cari desa..."],
+        };
+        const ids = {
+          prov: "combo-provinsi",
+          kota: "combo-kota",
+          kec: "combo-kecamatan",
+          desa: "combo-desa",
+        };
+        WL_LEVELS.forEach((lvl, i) => {
+          wilayahCombos[lvl] = makeCombo(
+            ids[lvl],
+            cfg[lvl][0],
+            cfg[lvl][1],
+            () => {
+              WL_LEVELS.slice(i + 1).forEach((l) =>
+                wilayahCombos[l].setValue(null)
+              ); // level bawah dikosongkan
+              refreshWilayahOptions();
+            }
+          );
+        });
+        refreshWilayahOptions();
+      }
+
+      function renderDynamicLabels() {
+        labelKawasanGroup.clearLayers();
+        const currentZoom = map.getZoom();
+        if (currentZoom < MIN_ZOOM_LABEL) return;
+        const mapBounds = map.getBounds();
+        const viewportPolygon = turf.bboxPolygon([
+          mapBounds.getWest(),
+          mapBounds.getSouth(),
+          mapBounds.getEast(),
+          mapBounds.getNorth(),
+        ]);
+
+        kawasanFeatures.forEach((item) => {
+          if (mapBounds.intersects(item.layer.getBounds())) {
+            try {
+              const intersection = turf.intersect(
+                item.geoJsonFeature,
+                viewportPolygon
+              );
+              const coords = turf.pointOnFeature(
+                intersection || item.geoJsonFeature
+              ).geometry.coordinates;
+              const labelIcon = L.divIcon({
+                className: "kawasan-dynamic-label",
+                html: `<div style="font-size: ${Math.max(
+                  8,
+                  9 + (currentZoom - MIN_ZOOM_LABEL) * 1.1
+                )}px;">${item.name}</div>`,
+                iconSize: [0, 0],
+              });
+              labelKawasanGroup.addLayer(
+                L.marker([coords[1], coords[0]], {
+                  icon: labelIcon,
+                  interactive: false,
+                })
+              );
+            } catch (e) {}
+          }
+        });
+      }
+      map.on("move zoom", renderDynamicLabels);
+
+      function processHotspotLayers(filterFrom = null, toastMsg = null) {
+        if (!kawasanGeoJSONData || !hotspotGeoJSONData) {
+          if (kawasanFailed) hideLoading();
+          return;
+        }
+        hotspotDalamLayer.clearLayers();
+        hotspotLuarLayer.clearLayers();
+        let highCount = 0,
+          mediumCount = 0;
+
+        kawasanFeatures.forEach((k) => {
+          k.highCount = 0;
+          k.mediumCount = 0;
+          k.minDate = null;
+          k.maxDate = null;
+        });
+        if (!kawasanBboxCache)
+          kawasanBboxCache = kawasanGeoJSONData.features.map((f, i) => ({
+            feature: f,
+            bbox: turf.bbox(f),
+            i: i,
+          }));
+        const kawasanBbox = kawasanBboxCache;
+        const features =
+          hotspotGeoJSONData.features.features || hotspotGeoJSONData.features;
+
+        // Daftar wilayah (provinsi/kota/kecamatan/desa) dibangun sekali per data hotspot
+        if (!hotspotGeoJSONData._wrowsBuilt) {
+          wilayahRows = [];
+          features.forEach((h) => {
+            const c = (h.properties.confidence_level || "").toLowerCase();
+            if (c !== "high" && c !== "medium") return;
+            h._w = hotspotWilayah(h.properties);
+            wilayahRows.push(h._w);
+          });
+          hotspotGeoJSONData._wrowsBuilt = true;
+          // opsi wilayah mengikuti data baru; pilihan yang tidak ada lagi di data otomatis dikosongkan
+          refreshWilayahOptions();
+          refreshWilayahOptions();
+          if (activeWilayah) {
+            const cur = currentWilayahSelection();
+            activeWilayah = WL_LEVELS.some((l) => cur[l] !== null) ? cur : null;
+          }
+        }
+        displayedBounds = L.latLngBounds([]);
+        displayedHotspots = [];
+
+        features.forEach((hotspot) => {
+          const conf = (
+            hotspot.properties.confidence_level || ""
+          ).toLowerCase();
+          if (conf !== "high" && conf !== "medium") return;
+
+          const pt = hotspot.geometry.coordinates; // pt[0] = X (Longitude), pt[1] = Y (Latitude)
+          // Pencocokan kawasan dihitung sekali per hotspot lalu disimpan (agar filter cepat)
+          if (hotspot._k === undefined) {
+            hotspot._k = -1;
+            for (let k of kawasanBbox) {
+              if (
+                pt[0] >= k.bbox[0] &&
+                pt[0] <= k.bbox[2] &&
+                pt[1] >= k.bbox[1] &&
+                pt[1] <= k.bbox[3]
+              ) {
+                if (turf.booleanPointInPolygon(hotspot, k.feature)) {
+                  hotspot._k = k.i;
+                  break;
+                }
+              }
+            }
+          }
+          const kIdx = hotspot._k,
+            inside = kIdx >= 0;
+          const p = hotspot.properties;
+
+          if (inside) {
+            const kItem = kawasanFeatures[kIdx];
+            if (conf === "high") kItem.highCount++;
+            else kItem.mediumCount++;
+            const hDateStr = hsDateWIB(p.hs_id);
+            if (hDateStr) {
+              if (!kItem.minDate || hDateStr < kItem.minDate)
+                kItem.minDate = hDateStr;
+              if (!kItem.maxDate || hDateStr > kItem.maxDate)
+                kItem.maxDate = hDateStr;
+            }
+          }
+
+          // Filter kawasan: hanya tampilkan hotspot di dalam kawasan terpilih
+          if (activeKawasanIdx !== null && kIdx !== activeKawasanIdx) return;
+          // Filter UPT (jika kawasan tidak dipilih): hanya hotspot di kawasan milik UPT tersebut
+          if (
+            activeKawasanIdx === null &&
+            activeUpt !== null &&
+            !(kIdx >= 0 && kawasanFeatures[kIdx].upt === activeUpt)
+          )
+            return;
+          // Filter wilayah: provinsi / kota / kecamatan / desa
+          if (activeWilayah && !matchWilayah(hotspot._w, activeWilayah)) return;
+          displayedBounds.extend([pt[1], pt[0]]);
+          displayedHotspots.push(hotspot);
+
+          const marker = L.circleMarker([pt[1], pt[0]], {
+            radius: conf === "high" ? 6 : 4,
+            fillColor: conf === "high" ? "#FF0000" : "#FFFF00",
+            color: "#000",
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.95,
+          });
+          // Popup: nama kawasan, desa, kota, provinsi + detail hotspot
+          marker.bindPopup(
+            () =>
+              buildHotspotPopup(p, pt, inside ? kawasanFeatures[kIdx] : null),
+            { maxWidth: 320 }
+          );
+
+          if (inside) {
+            hotspotDalamLayer.addLayer(marker);
+            if (conf === "high") highCount++;
+            else mediumCount++;
+          } else hotspotLuarLayer.addLayer(marker);
+        });
+
+        kawasanFeatures.forEach((item, i) => {
+          item.layer.setStyle(
+            i === activeKawasanIdx ||
+              (activeKawasanIdx === null &&
+                activeUpt !== null &&
+                item.upt === activeUpt)
+              ? KAWASAN_STYLE_ACTIVE
+              : KAWASAN_STYLE
+          );
+          let dateRangeStr = "Tidak Ada Data";
+          if (item.minDate && item.maxDate) {
+            dateRangeStr =
+              item.minDate === item.maxDate
+                ? item.minDate
+                : `${item.minDate} s/d ${item.maxDate}`;
+          } else if (
+            currentActiveDateRange !== "Semua Periode / Belum Difilter"
+          ) {
+            dateRangeStr = currentActiveDateRange;
+          }
+
+          item.layer.bindPopup(`
+                    <b>${item.name}</b><br>
+                    ${item.upt}<br>
+                    <b>Rentang:</b> ${dateRangeStr}
+                    <hr style="margin:5px 0;">
+                    High: <span style="color:red">${
+                      item.highCount
+                    }</span> | Medium: <span style="color:#d99b00">${
+            item.mediumCount
+          }</span><br>
+                    Total: <b>${item.highCount + item.mediumCount}</b>
+                `);
+        });
+
+        document.getElementById("cnt-high").innerText = highCount;
+        document.getElementById("cnt-medium").innerText = mediumCount;
+        document.getElementById("cnt-total").innerText =
+          highCount + mediumCount;
+        const sumTitle = document.getElementById("summary-title");
+        const infoEl = document.getElementById("filter-info");
+        const total = highCount + mediumCount;
+        const parts = [];
+        if (activeKawasanIdx !== null)
+          parts.push(kawasanFeatures[activeKawasanIdx].name);
+        else if (activeUpt !== null) parts.push(activeUpt);
+        if (activeWilayah) {
+          const names = WL_LEVELS.map((l) => activeWilayah[l]).filter(
+            (v) => v !== null
+          );
+          parts.push(names[names.length - 1]);
+        }
+        sumTitle.innerText = parts.length
+          ? "Hotspot: " + parts.join(" · ")
+          : "Hotspot Hutan Konservasi";
+        if (infoEl)
+          infoEl.innerText =
+            dateFilterActive || anySpatialFilter()
+              ? `${activeFilterDescription()}\n${total} hotspot ditampilkan.`
+              : `Menampilkan semua hotspot (${total}).`;
+
+        isHotspotLoaded = true;
+        const doneMsg = toastMsg || pendingApplyMsg;
+        pendingApplyMsg = null;
+        if (pendingZoom) {
+          pendingZoom = false;
+          try {
+            if (pendingCoord)
+              goToCoordinate(
+                pendingCoord.lat,
+                pendingCoord.lng
+              ); // koordinat diprioritaskan
+            else zoomToActiveFilters();
+          } catch (e) {
+            console.error(e);
+          }
+          pendingCoord = null;
+        }
+        checkAllDataLoaded(filterFrom !== null, doneMsg);
+      }
+
+      // --- FUNGSI EKSPOR DATA (.pdf, .xlsx, .csv, .shp) ---
+      // Format kolom: Nama UPT, Nama Kawasan, Provinsi, Kota, Kecamatan, Desa, Latitude, Longitude, Waktu Hotspot
+      const EXPORT_HEADERS = [
+        "Nama UPT",
+        "Nama Kawasan",
+        "Provinsi",
+        "Kota/Kabupaten",
+        "Kecamatan",
+        "Desa",
+        "Latitude",
+        "Longitude",
+        "Waktu Hotspot (WIB)",
+      ];
+
+      function buildExportRows() {
+        const rows = displayedHotspots.map((h) => {
+          const p = h.properties,
+            c = h.geometry.coordinates; // c = [Longitude, Latitude]
+          const k = h._k >= 0 ? kawasanFeatures[h._k] : null;
+          return {
+            upt: k ? k.upt : "-",
+            kawasan: k ? k.name : "-",
+            prov: pickProp(p, LOC_KEYS.provinsi),
+            kota: pickProp(p, LOC_KEYS.kota),
+            kec: pickProp(p, LOC_KEYS.kecamatan),
+            desa: pickProp(p, LOC_KEYS.desa),
+            lat: c[1],
+            lng: c[0],
+            waktu: p.date_hotspot + "WIB" || "-",
+            _h: h,
+          };
+        });
+        const cmp = (a, b) => a.localeCompare(b, "id");
+        rows.sort(
+          (x, y) =>
+            cmp(x.upt, y.upt) ||
+            cmp(x.kawasan, y.kawasan) ||
+            cmp(x.prov, y.prov) ||
+            cmp(x.kota, y.kota) ||
+            cmp(x.kec, y.kec) ||
+            cmp(x.desa, y.desa)
+        );
+        return rows;
+      }
+
+      function activeFilterDescription() {
+        const parts = [];
+        parts.push("Periode: " + currentActiveDateRange);
+        if (activeUpt !== null) parts.push("UPT: " + activeUpt);
+        if (activeKawasanIdx !== null)
+          parts.push("Kawasan: " + kawasanFeatures[activeKawasanIdx].name);
+        if (activeWilayah) {
+          const lbl = {
+            prov: "Provinsi",
+            kota: "Kota/Kab.",
+            kec: "Kecamatan",
+            desa: "Desa",
+          };
+          WL_LEVELS.forEach((l) => {
+            if (activeWilayah[l] !== null)
+              parts.push(lbl[l] + ": " + activeWilayah[l]);
+          });
+        }
+        if (searchMarker) {
+          const ll = searchMarker.getLatLng();
+          parts.push(`Koordinat: ${ll.lat}, ${ll.lng}`);
+        }
+        return parts.join("  |  ");
+      }
+
+      function exportData(type) {
+        if (!hotspotGeoJSONData || !displayedHotspots.length) {
+          alert("Tidak ada hotspot yang sedang tampil untuk diekspor!");
+          return;
+        }
+        const rows = buildExportRows();
+        const stamp = toWIBDate(new Date());
+
+        if (type === "xlsx" || type === "csv") {
+          const sheetRows = rows.map((r) => ({
+            [EXPORT_HEADERS[0]]: r.upt,
+            [EXPORT_HEADERS[1]]: r.kawasan,
+            [EXPORT_HEADERS[2]]: r.prov,
+            [EXPORT_HEADERS[3]]: r.kota,
+            [EXPORT_HEADERS[4]]: r.kec,
+            [EXPORT_HEADERS[5]]: r.desa,
+            [EXPORT_HEADERS[6]]: r.lat,
+            [EXPORT_HEADERS[7]]: r.lng,
+            [EXPORT_HEADERS[8]]: r.waktu,
+          }));
+          const worksheet = XLSX.utils.json_to_sheet(sheetRows, {
+            header: EXPORT_HEADERS,
+          });
+          worksheet["!cols"] = [
+            { wch: 38 },
+            { wch: 34 },
+            { wch: 20 },
+            { wch: 22 },
+            { wch: 22 },
+            { wch: 22 },
+            { wch: 12 },
+            { wch: 12 },
+            { wch: 34 },
+          ];
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(
+            workbook,
+            worksheet,
+            "DataHotspotKawasan"
+          );
+          XLSX.writeFile(workbook, `data_hotspot_kawasan_${stamp}.${type}`);
+          showToast(`Berhasil mengekspor file .${type}`);
+        } else if (type === "pdf") {
+          if (!(window.jspdf && window.jspdf.jsPDF)) {
+            alert(
+              "Pustaka PDF belum termuat. Periksa koneksi internet lalu muat ulang halaman."
+            );
+            return;
+          }
+          showLoading(`Membuat PDF (${rows.length} hotspot)...`);
+          runAfterPaint(() => {
+            try {
+              const { jsPDF } = window.jspdf;
+              const doc = new jsPDF({
+                orientation: "landscape",
+                unit: "mm",
+                format: "a4",
+              }); // kertas landscape
+              const pageW = doc.internal.pageSize.getWidth();
+              const now = new Date();
+              const waktuCetak =
+                now.toLocaleDateString("id-ID", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                  timeZone: "Asia/Jakarta",
+                }) +
+                " " +
+                now.toLocaleTimeString("id-ID", {
+                  hour12: false,
+                  timeZone: "Asia/Jakarta",
+                }) +
+                " WIB";
+
+              doc.setFont("helvetica", "bold");
+              doc.setFontSize(14);
+              doc.text("DATA HOTSPOT HUTAN KONSERVASI", pageW / 2, 12, {
+                align: "center",
+              });
+              doc.setFont("helvetica", "normal");
+              doc.setFontSize(8.5);
+              doc.text(activeFilterDescription(), pageW / 2, 17.5, {
+                align: "center",
+                maxWidth: pageW - 20,
+              });
+              doc.text(
+                `Total: ${rows.length} hotspot  |  Dicetak: ${waktuCetak}`,
+                pageW / 2,
+                22,
+                { align: "center" }
+              );
+
+              doc.autoTable({
+                startY: 26,
+                head: [["No", ...EXPORT_HEADERS]],
+                body: rows.map((r, i) => [
+                  i + 1,
+                  r.upt,
+                  r.kawasan,
+                  r.prov,
+                  r.kota,
+                  r.kec,
+                  r.desa,
+                  r.lat.toFixed(5),
+                  r.lng.toFixed(5),
+                  r.waktu,
+                ]),
+                theme: "grid",
+                margin: { left: 10, right: 10, top: 12, bottom: 12 },
+                styles: {
+                  fontSize: 7,
+                  cellPadding: 1.3,
+                  overflow: "linebreak",
+                  valign: "middle",
+                  lineColor: [200, 200, 200],
+                  lineWidth: 0.1,
+                },
+                headStyles: {
+                  fillColor: [0, 77, 102],
+                  textColor: 255,
+                  halign: "center",
+                  fontStyle: "bold",
+                },
+                alternateRowStyles: { fillColor: [244, 248, 250] },
+                columnStyles: {
+                  0: { cellWidth: 9, halign: "center" },
+                  1: { cellWidth: 40 },
+                  2: { cellWidth: 40 },
+                  3: { cellWidth: 27 },
+                  4: { cellWidth: 30 },
+                  5: { cellWidth: 27 },
+                  6: { cellWidth: 27 },
+                  7: { cellWidth: 19, halign: "right" },
+                  8: { cellWidth: 19, halign: "right" },
+                  9: { cellWidth: 39 },
+                },
+                showHead: "everyPage",
+                didDrawPage: () => {
+                  const n = doc.internal.getNumberOfPages();
+                  doc.setFontSize(7.5);
+                  doc.setTextColor(120);
+                  doc.text(
+                    `Halaman ${doc.internal.getCurrentPageInfo().pageNumber}`,
+                    pageW - 10,
+                    doc.internal.pageSize.getHeight() - 6,
+                    { align: "right" }
+                  );
+                  doc.text(
+                    "Monitoring Hotspot SIPONGI - Kawasan Hutan Konservasi",
+                    10,
+                    doc.internal.pageSize.getHeight() - 6
+                  );
+                  doc.setTextColor(0);
+                },
+              });
+              doc.save(`data_hotspot_kawasan_${stamp}.pdf`);
+              showToast("Berhasil mengekspor file .pdf");
+            } catch (e) {
+              console.error(e);
+              alert("Gagal membuat PDF.");
+            } finally {
+              hideLoading();
+            }
+          });
+        } else if (type === "shp") {
+          const cleanFeatures = rows.map((r) => {
+            const f = JSON.parse(JSON.stringify(r._h));
+            delete f._k;
+            delete f._w;
+            f.properties.NUPT = r.upt;
+            f.properties.NKWS = r.kawasan;
+            f.properties.PROV = r.prov;
+            f.properties.KOTA = r.kota;
+            f.properties.KEC = r.kec;
+            f.properties.DESA = r.desa;
+            return f;
+          });
+          try {
+            shpwrite.download(
+              { type: "FeatureCollection", features: cleanFeatures },
+              {
+                folder: "hotspot_kawasan_export",
+                types: { point: "hotspot_points" },
+              }
+            );
+            showToast("Berhasil mengekspor Shapefile (.zip)");
+          } catch (e) {
+            console.error(e);
+            alert("Gagal mengekspor file SHP.");
+          }
+        }
+      }
+
+      // =====================================================================
+      // EKSPOR PETA KE PDF  (hotspot + batas kawasan + label + popup + grid)
+      // Peta digambar ulang ke kanvas resolusi tinggi sesuai tampilan & filter aktif,
+      // lalu disusun ke PDF (jsPDF) lengkap dengan judul, legenda, skala, dan grid koordinat.
+      // =====================================================================
+      // =====================================================================
+      // SELECT AREA (POLYGON) - digambar manual di peta, dipakai sebagai sumber cetak PDF
+      // =====================================================================
+      let areaPoints = [],
+        areaDrawing = false,
+        areaRubber = null;
+      const areaGroup = L.layerGroup().addTo(map);
+      const AREA_STYLE = {
+        color: "#00b8d4",
+        weight: 3,
+        dashArray: "8 6",
+        fillColor: "#00b8d4",
+        fillOpacity: 0.12,
+        interactive: false,
+      };
+
+      function areaKm2() {
+        if (areaPoints.length < 3) return 0;
+        const ring = areaPoints.map((p) => [p.lng, p.lat]);
+        ring.push(ring[0]);
+        try {
+          return turf.area(turf.polygon([ring])) / 1e6;
+        } catch (e) {
+          return 0;
+        }
+      }
+      function areaFmtKm2(v) {
+        return v.toLocaleString("id-ID", {
+          maximumFractionDigits: v >= 100 ? 0 : 2,
+        });
+      }
+
+      function areaUpdateUI() {
+        const has = areaPoints.length >= 3 && !areaDrawing;
+        const show = (id, on) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = on ? "block" : "none";
+        };
+        show("btn-area-draw", !areaDrawing);
+        show("btn-area-finish", areaDrawing);
+        show("btn-area-undo", areaDrawing);
+        const radio = document.getElementById("pdfmap-source-area");
+        if (radio) {
+          radio.disabled = !has;
+          if (!has)
+            document.querySelector(
+              'input[name="pdfmap-source"][value="filter"]'
+            ).checked = true;
+        }
+        const info = document.getElementById("area-info");
+        if (!info) return;
+        if (areaDrawing)
+          info.textContent = `Menggambar... ${areaPoints.length} titik. Klik titik pertama / klik dua kali / tombol Selesai untuk menutup polygon (min. 3 titik). Esc = batal.`;
+        else if (has)
+          info.textContent = `Area terpilih: ${
+            areaPoints.length
+          } titik, luas \u00B1 ${areaFmtKm2(areaKm2())} km\u00B2.`;
+        else
+          info.textContent =
+            'Belum ada area. Klik "Gambar Area" lalu klik titik-titik di peta.';
+      }
+
+      function areaRedraw() {
+        areaGroup.clearLayers();
+        areaRubber = null;
+        if (areaPoints.length >= 3)
+          L.polygon(areaPoints, AREA_STYLE).addTo(areaGroup);
+        else if (areaPoints.length === 2)
+          L.polyline(areaPoints, {
+            color: "#00b8d4",
+            weight: 3,
+            interactive: false,
+          }).addTo(areaGroup);
+        areaPoints.forEach((p, i) =>
+          L.circleMarker(p, {
+            radius: areaDrawing && i === 0 ? 7 : 4,
+            color: "#fff",
+            weight: 2,
+            fillColor: areaDrawing && i === 0 ? "#ff9800" : "#00b8d4",
+            fillOpacity: 1,
+            interactive: false,
+          }).addTo(areaGroup)
+        );
+        if (areaDrawing && areaPoints.length) {
+          areaRubber = L.polyline(
+            [
+              areaPoints[areaPoints.length - 1],
+              areaPoints[areaPoints.length - 1],
+            ],
+            {
+              color: "#00b8d4",
+              weight: 2,
+              dashArray: "4 4",
+              interactive: false,
+            }
+          ).addTo(areaGroup);
+        }
+      }
+
+      function areaSetDrawingMode(on) {
+        areaDrawing = on;
+        map.getContainer().classList.toggle("area-drawing", on);
+        if (on) map.doubleClickZoom.disable();
+        else setTimeout(() => map.doubleClickZoom.enable(), 400);
+      }
+
+      function startAreaDraw() {
+        if (areaDrawing) return;
+        areaPoints = [];
+        map.closePopup();
+        areaSetDrawingMode(true);
+        areaRedraw();
+        areaUpdateUI();
+        showToast("Klik peta untuk menambah titik polygon.");
+      }
+      function finishAreaDraw() {
+        if (!areaDrawing) return;
+        if (areaPoints.length < 3) {
+          showToast("Minimal 3 titik untuk membuat area.", true);
+          return;
+        }
+        areaSetDrawingMode(false);
+        areaRedraw();
+        areaUpdateUI();
+        document.querySelector(
+          'input[name="pdfmap-source"][value="area"]'
+        ).checked = true;
+        showToast(
+          'Area terpilih dibuat. Sumber cetak PDF diatur ke "Area terpilih".'
+        );
+      }
+      function undoAreaPoint() {
+        if (!areaDrawing || !areaPoints.length) return;
+        areaPoints.pop();
+        areaRedraw();
+        areaUpdateUI();
+      }
+      function clearArea() {
+        areaSetDrawingMode(false);
+        areaPoints = [];
+        areaRedraw();
+        areaUpdateUI();
+      }
+
+      // Klik saat mode gambar ditangkap di fase capture pada kontainer peta, sebelum layer kawasan/hotspot
+      // (yang membuka popup & menghentikan event) sempat menerimanya -> polygon bisa dibuat di atas kawasan mana pun.
+      const areaMapEl = map.getContainer();
+      let areaDownPt = null;
+      const areaIgnoreTarget = (t) =>
+        !!(
+          t &&
+          t.closest &&
+          t.closest(".leaflet-control, .leaflet-popup, .sidebar-wrapper")
+        );
+      function areaAddPoint(ev) {
+        const ll = map.mouseEventToLatLng(ev),
+          cp = map.mouseEventToContainerPoint(ev);
+        if (
+          areaPoints.length >= 3 &&
+          map.latLngToContainerPoint(areaPoints[0]).distanceTo(cp) < 12
+        ) {
+          finishAreaDraw();
+          return;
+        }
+        areaPoints.push(ll);
+        areaRedraw();
+        areaUpdateUI();
+      }
+      areaMapEl.addEventListener(
+        "mousedown",
+        (ev) => {
+          areaDownPt = { x: ev.clientX, y: ev.clientY };
+        },
+        true
+      );
+      areaMapEl.addEventListener(
+        "click",
+        (ev) => {
+          if (!areaDrawing || areaIgnoreTarget(ev.target)) return;
+          ev.stopPropagation();
+          ev.preventDefault();
+          if (
+            areaDownPt &&
+            Math.hypot(ev.clientX - areaDownPt.x, ev.clientY - areaDownPt.y) > 5
+          )
+            return; // geser peta, bukan klik
+          areaAddPoint(ev);
+        },
+        true
+      );
+      areaMapEl.addEventListener(
+        "dblclick",
+        (ev) => {
+          if (!areaDrawing || areaIgnoreTarget(ev.target)) return;
+          ev.stopPropagation();
+          ev.preventDefault();
+          // dua klik cepat menambah titik kembar -> buang satu, lalu tutup polygon
+          const n = areaPoints.length;
+          if (n >= 2 && areaPoints[n - 1].equals(areaPoints[n - 2], 1e-9))
+            areaPoints.pop();
+          finishAreaDraw();
+        },
+        true
+      );
+      map.on("mousemove", (e) => {
+        if (areaDrawing && areaRubber && areaPoints.length)
+          areaRubber.setLatLngs([areaPoints[areaPoints.length - 1], e.latlng]);
+      });
+      map.on("popupopen", (e) => {
+        if (areaDrawing) map.closePopup(e.popup);
+      }); // tidak ada popup saat menggambar
+      document.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape" && areaDrawing) clearArea();
+      });
+
+      const MP_FONT = "'Segoe UI', Arial, Helvetica, sans-serif";
+      const MP_MAX_ALL_POPUPS = 15;
+      const MP_GRID_STEPS = [
+        0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2,
+        0.5, 1, 2, 5, 10, 20, 30,
+      ];
+
+      // Popup yang sedang terbuka di peta (untuk ikut dicetak seperti tampilan layar)
+      let openPopupRef = null;
+      map.on("popupopen", (e) => {
+        openPopupRef = e.popup;
+      });
+      map.on("popupclose", (e) => {
+        if (openPopupRef === e.popup) openPopupRef = null;
+      });
+
+      function mpMercXY(lat, lng, z) {
+        const sz = 256 * Math.pow(2, z);
+        const la =
+          (Math.max(-85.05112878, Math.min(85.05112878, lat)) * Math.PI) / 180;
+        return [
+          ((lng + 180) / 360) * sz,
+          (0.5 - Math.log(Math.tan(Math.PI / 4 + la / 2)) / (2 * Math.PI)) * sz,
+        ];
+      }
+      function mpInvXY(x, y, z) {
+        const sz = 256 * Math.pow(2, z);
+        const n = Math.PI * (1 - (2 * y) / sz);
+        return [
+          (Math.atan(Math.sinh(n)) * 180) / Math.PI,
+          (x / sz) * 360 - 180,
+        ]; // [lat, lng]
+      }
+
+      // Muat gambar tile dengan CORS agar kanvas tidak "tainted"; coba ulang sekali dengan cache-buster
+      function mpLoadImage(url) {
+        return new Promise((resolve) => {
+          let tries = 0;
+          const attempt = () => {
+            const u =
+              tries === 0
+                ? url
+                : url + (url.includes("?") ? "&" : "?") + "cb=" + Date.now();
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            let done = false,
+              timer = null;
+            const finish = (ok) => {
+              if (done) return;
+              done = true;
+              clearTimeout(timer);
+              if (ok) resolve(img);
+              else if (tries++ < 1) attempt();
+              else resolve(null);
+            };
+            timer = setTimeout(() => finish(false), 15000);
+            img.onload = () => finish(true);
+            img.onerror = () => finish(false);
+            img.src = u;
+          };
+          attempt();
+        });
+      }
+
+      function mpRoundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+      }
+
+      function mpWrap(ctx, text, maxW) {
+        const words = String(text).split(/\s+/).filter(Boolean);
+        if (!words.length) return [""];
+        const lines = [];
+        let cur = words[0];
+        for (let i = 1; i < words.length; i++) {
+          const t = cur + " " + words[i];
+          if (ctx.measureText(t).width <= maxW) cur = t;
+          else {
+            lines.push(cur);
+            cur = words[i];
+          }
+        }
+        lines.push(cur);
+        return lines;
+      }
+
+      // ---- Model isi popup ----
+      function mpHotspotModel(h) {
+        const p = h.properties,
+          c = h.geometry.coordinates;
+        const k = h._k >= 0 ? kawasanFeatures[h._k] : null;
+        const rows = [
+          { k: "Kawasan", v: k ? k.name : "Di luar kawasan konservasi" },
+        ];
+        if (k) rows.push({ k: "UPT", v: k.upt });
+        rows.push(
+          { k: "Desa", v: pickProp(p, LOC_KEYS.desa) },
+          { k: "Kecamatan", v: pickProp(p, LOC_KEYS.kecamatan) },
+          { k: "Kota/Kab.", v: pickProp(p, LOC_KEYS.kota) },
+          { k: "Provinsi", v: pickProp(p, LOC_KEYS.provinsi) },
+          { sep: true },
+          { k: "Confidence", v: p.confidence_level || "-" },
+          { k: "Waktu", v: p.date_hotspot || "-" },
+          { k: "X, Y", v: `${c[0].toFixed(5)}, ${c[1].toFixed(5)}` }
+        );
+        return { title: "Informasi Hotspot", rows };
+      }
+      function mpPopupModelFromDom(popup) {
+        const el = popup.getElement && popup.getElement();
+        if (!el) return null;
+        const cn = el.querySelector(".leaflet-popup-content");
+        if (!cn) return null;
+        const hs = cn.querySelector(".hs-popup");
+        if (hs) {
+          const t = hs.querySelector(".hs-title");
+          const model = {
+            title: (t && t.textContent.trim()) || "Informasi Hotspot",
+            rows: [],
+          };
+          hs.querySelectorAll(":scope > table, :scope > hr").forEach((n) => {
+            if (n.tagName === "HR") model.rows.push({ sep: true });
+            else
+              n.querySelectorAll("tr").forEach((tr) => {
+                const td = tr.querySelectorAll("td");
+                if (td.length >= 2)
+                  model.rows.push({
+                    k: td[0].textContent.trim(),
+                    v: td[1].textContent.replace(/^\s*:\s*/, "").trim(),
+                  });
+              });
+          });
+          return model;
+        }
+        const lines = (cn.innerText || cn.textContent || "")
+          .split("\n")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (!lines.length) return null;
+        return {
+          title: lines[0],
+          rows: lines.slice(1).map((t) => ({ text: t })),
+        };
+      }
+
+      function mpLayoutPopup(ctx, model, fs, maxW) {
+        const pad = fs * 0.8,
+          lh = fs * 1.4,
+          titleFs = fs * 1.12,
+          colGap = fs * 1.1;
+        ctx.font = `700 ${titleFs}px ${MP_FONT}`;
+        const titleW = ctx.measureText(model.title).width;
+        ctx.font = `700 ${fs}px ${MP_FONT}`;
+        let kw = 0;
+        model.rows.forEach((r) => {
+          if (r.k !== undefined) kw = Math.max(kw, ctx.measureText(r.k).width);
+        });
+        kw = Math.min(kw, maxW * 0.4);
+        ctx.font = `400 ${fs}px ${MP_FONT}`;
+        const vMax = maxW - 2 * pad - kw - colGap;
+        let contentW = titleW,
+          h = pad + lh * 1.15 + fs * 0.35;
+        model.rows.forEach((r) => {
+          if (r.sep) {
+            r.hh = lh * 0.5;
+            return;
+          }
+          if (r.k !== undefined) {
+            r.lines = mpWrap(ctx, r.v, vMax);
+            contentW = Math.max(
+              contentW,
+              kw +
+                colGap +
+                Math.max(...r.lines.map((l) => ctx.measureText(l).width))
+            );
+          } else {
+            r.lines = mpWrap(ctx, r.text, maxW - 2 * pad);
+            contentW = Math.max(
+              contentW,
+              Math.max(...r.lines.map((l) => ctx.measureText(l).width))
+            );
+          }
+          r.hh = r.lines.length * lh;
+        });
+        model.rows.forEach((r) => {
+          h += r.hh;
+        });
+        h += pad;
+        return {
+          w: Math.min(maxW, contentW + 2 * pad),
+          h,
+          pad,
+          lh,
+          titleFs,
+          kw,
+          colGap,
+          fs,
+        };
+      }
+
+      function mpDrawPopup(ctx, model, lay, x, y, PX) {
+        const { w, h, pad, lh, titleFs, kw, colGap, fs } = lay;
+        ctx.save();
+        ctx.shadowColor = "rgba(0,0,0,0.35)";
+        ctx.shadowBlur = PX * 4;
+        ctx.shadowOffsetY = PX * 1.2;
+        ctx.fillStyle = "#fff";
+        mpRoundRect(ctx, x, y, w, h, fs * 0.6);
+        ctx.fill();
+        ctx.restore();
+        ctx.save();
+        ctx.strokeStyle = "#9a9a9a";
+        ctx.lineWidth = PX * 0.8;
+        mpRoundRect(ctx, x, y, w, h, fs * 0.6);
+        ctx.stroke();
+        ctx.textBaseline = "alphabetic";
+        let cy = y + pad + titleFs * 0.85;
+        ctx.fillStyle = "#004d66";
+        ctx.font = `700 ${titleFs}px ${MP_FONT}`;
+        ctx.fillText(model.title, x + pad, cy);
+        cy += fs * 0.55;
+        ctx.strokeStyle = "#d0d0d0";
+        ctx.lineWidth = PX * 0.8;
+        ctx.beginPath();
+        ctx.moveTo(x + pad, cy);
+        ctx.lineTo(x + w - pad, cy);
+        ctx.stroke();
+        cy += lh * 0.7;
+        model.rows.forEach((r) => {
+          if (r.sep) {
+            ctx.strokeStyle = "#d8d8d8";
+            ctx.beginPath();
+            ctx.moveTo(x + pad, cy - lh * 0.45);
+            ctx.lineTo(x + w - pad, cy - lh * 0.45);
+            ctx.stroke();
+            cy += r.hh;
+            return;
+          }
+          ctx.fillStyle = "#222";
+          if (r.k !== undefined) {
+            ctx.font = `700 ${fs}px ${MP_FONT}`;
+            ctx.fillText(r.k, x + pad, cy);
+            ctx.font = `400 ${fs}px ${MP_FONT}`;
+            ctx.fillText(":", x + pad + kw + fs * 0.3, cy);
+            r.lines.forEach((ln, i) =>
+              ctx.fillText(ln, x + pad + kw + colGap, cy + i * lh)
+            );
+          } else {
+            ctx.font = `400 ${fs}px ${MP_FONT}`;
+            r.lines.forEach((ln, i) => ctx.fillText(ln, x + pad, cy + i * lh));
+          }
+          cy += r.hh;
+        });
+        ctx.restore();
+      }
+
+      // Pilih interval grid (derajat) agar jumlah garis wajar
+      function mpPickStep(spanDeg) {
+        for (const s of MP_GRID_STEPS) if (spanDeg / s <= 7) return s;
+        return 30;
+      }
+      function mpFmtCoord(v, step, isLat) {
+        const dec = Math.min(4, (String(step).split(".")[1] || "").length);
+        const dir = isLat ? (v < 0 ? "LS" : "LU") : v < 0 ? "BB" : "BT";
+        return `${Math.abs(v).toFixed(dec)}\u00B0 ${dir}`;
+      }
+      function mpLogoData(img, px) {
+        try {
+          if (!img || !img.complete || !img.naturalWidth) return null;
+          const r = Math.min(px / img.naturalWidth, px / img.naturalHeight, 1);
+          const c = document.createElement("canvas");
+          c.width = Math.max(1, Math.round(img.naturalWidth * r));
+          c.height = Math.max(1, Math.round(img.naturalHeight * r));
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          return {
+            data: c.toDataURL("image/png"),
+            ratio: img.naturalWidth / img.naturalHeight,
+          };
+        } catch (e) {
+          return null;
+        } // mis. halaman dibuka via file:// -> logo dilewati
+      }
+
+      async function exportMapPdf() {
+        if (!(window.jspdf && window.jspdf.jsPDF)) {
+          alert(
+            "Pustaka PDF belum termuat. Periksa koneksi internet lalu muat ulang halaman."
+          );
+          return;
+        }
+        if (!isKawasanLoaded || !isHotspotLoaded) {
+          showToast("Data belum selesai dimuat.", true);
+          return;
+        }
+        if (areaDrawing) {
+          showToast("Selesaikan dulu gambar area (tombol Selesai).", true);
+          return;
+        }
+        const srcEl = document.querySelector(
+          'input[name="pdfmap-source"]:checked'
+        );
+        const source = srcEl ? srcEl.value : "filter";
+        if (source === "area" && areaPoints.length < 3) {
+          showToast("Area belum dibuat.", true);
+          return;
+        }
+        const opts = {
+          source,
+          paper: document.getElementById("pdfmap-paper").value,
+          withGrid: document.getElementById("pdfmap-grid").checked,
+          allPopups: document.getElementById("pdfmap-allpopup").checked,
+        };
+        showLoading("Membuat peta PDF...");
+        await new Promise((r) =>
+          requestAnimationFrame(() => setTimeout(r, 30))
+        );
+        try {
+          const msg = await buildMapPdf(opts);
+          showToast(msg || "Berhasil mengekspor peta ke PDF");
+        } catch (e) {
+          console.error(e);
+          alert("Gagal membuat PDF peta: " + (e && e.message ? e.message : e));
+        } finally {
+          hideLoading();
+        }
+      }
+
+      // ---------- GEOREFERENSI PDF (GeoPDF ISO 32000: /VP + /Measure /GEO) ----------
+      // Peta pada PDF digambar dalam Web Mercator (EPSG:3857). Empat sudut bingkai peta
+      // (lat/lon WGS84) dipasangkan dengan koordinat halaman PDF, sehingga pembaca GeoPDF
+      // (Avenza Maps, QGIS, ArcGIS, Adobe Acrobat) dapat menempatkan peta pada lokasi sebenarnya.
+      const MP_WKT_3857 =
+        'PROJCS["WGS 84 / Pseudo-Mercator",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]],PROJECTION["Mercator_1SP"],PARAMETER["central_meridian",0],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],EXTENSION["PROJ4","+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs"],AUTHORITY["EPSG","3857"]]';
+      const MP_WKT_4326 =
+        'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]';
+
+      // pdfBuf: ArrayBuffer dari jsPDF; geo: { bbox:[x1,y1,x2,y2] (pt, origin kiri-bawah),
+      // north, south, west, east (derajat) }. Mengembalikan Uint8Array PDF + update inkremental.
+      function mpGeoreferencePdf(pdfBuf, geo) {
+        const bytes = new Uint8Array(pdfBuf);
+        let s = "";
+        for (let i = 0; i < bytes.length; i += 8192)
+          s += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+
+        // 1) cari objek halaman (/Type /Page, bukan /Pages)
+        let pageObj = null;
+        const reObj = /(\d+) (\d+) obj\s*<<([\s\S]*?)endobj/g;
+        let mo;
+        while ((mo = reObj.exec(s))) {
+          if (/\/Type\s*\/Page(?![A-Za-z])/.test(mo[3])) {
+            pageObj = { num: mo[1], gen: mo[2], body: mo[3] };
+            break;
+          }
+        }
+        if (!pageObj) throw new Error("Objek halaman PDF tidak ditemukan");
+        const lastClose = pageObj.body.lastIndexOf(">>");
+        const dictInner = pageObj.body.substring(0, lastClose);
+
+        // 2) trailer & startxref terakhir
+        const sx = s.lastIndexOf("startxref");
+        const prevXref = parseInt(s.substring(sx + 9).trim().split(/\s/)[0], 10);
+        const tr = s.lastIndexOf("trailer");
+        const trailerTxt = s.substring(tr, sx);
+        const size = parseInt(/\/Size\s+(\d+)/.exec(trailerTxt)[1], 10);
+        const root = /\/Root\s+(\d+ \d+ R)/.exec(trailerTxt)[1];
+        const info = /\/Info\s+(\d+ \d+ R)/.exec(trailerTxt);
+        const idm = /\/ID\s*\[[^\]]*\]/.exec(trailerTxt);
+
+        // 3) kamus georeferensi
+        const f = (v) => (+v).toFixed(10).replace(/0+$/, "").replace(/\.$/, ".0");
+        const p = (v) => (+v).toFixed(4);
+        const [x1, y1, x2, y2] = geo.bbox;
+        // urutan titik: kiri-bawah, kiri-atas, kanan-atas, kanan-bawah; GPTS = (lat lon) WGS84
+        const gpts = [
+          geo.south, geo.west,
+          geo.north, geo.west,
+          geo.north, geo.east,
+          geo.south, geo.east,
+        ].map(f).join(" ");
+        const lpts = "0 0 0 1 1 1 1 0"; // 0..1 relatif terhadap BBox, (0,0)=kiri-bawah
+        const esc = (t) => t.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+        const vp =
+          "/VP [<< /Type /Viewport /BBox [" + [x1, y1, x2, y2].map(p).join(" ") + "] " +
+          "/Name (Peta Hotspot) /Measure << /Type /Measure /Subtype /GEO " +
+          "/Bounds [0 0 0 1 1 1 1 0] /GPTS [" + gpts + "] /LPTS [" + lpts + "] " +
+          "/GCS << /Type /PROJCS /Name (WGS 84 / Pseudo-Mercator) /EPSG 3857 /WKT (" + esc(MP_WKT_3857) + ") >> " +
+          "/DCS << /Type /GEOGCS /Name (WGS 84) /EPSG 4326 /WKT (" + esc(MP_WKT_4326) + ") >> " +
+          ">> >>]";
+
+        // 4) tulis update inkremental: objek halaman baru + xref + trailer
+        const newPage =
+          pageObj.num + " " + pageObj.gen + " obj\n<<" + dictInner.replace(/\s+$/, "") + "\n" + vp + "\n>>\nendobj\n";
+        const offset = bytes.length + 1; // 1 byte untuk "\n" pemisah
+        const xrefPos = offset + newPage.length;
+        const pad = (n, w) => String(n).padStart(w, "0");
+        let tail =
+          "\n" + newPage +
+          "xref\n" + pageObj.num + " 1\n" + pad(offset, 10) + " 00000 n \n" +
+          "trailer\n<<\n/Size " + size + "\n/Root " + root + "\n" +
+          (info ? "/Info " + info[1] + "\n" : "") +
+          (idm ? idm[0] + "\n" : "") +
+          "/Prev " + prevXref + "\n>>\nstartxref\n" + xrefPos + "\n%%EOF\n";
+        const out = new Uint8Array(bytes.length + tail.length);
+        out.set(bytes, 0);
+        for (let i = 0; i < tail.length; i++) out[bytes.length + i] = tail.charCodeAt(i) & 255;
+        return out;
+      }
+
+      async function buildMapPdf({ source, paper, withGrid, allPopups }) {
+        const notes = [];
+        // ---------- Ukuran halaman & kanvas ----------
+        const dims =
+          paper === "a3"
+            ? { w: 420, h: 297, ppm: 6.5 }
+            : { w: 297, h: 210, ppm: 8 };
+        const u = dims.w / 297,
+          ppm = dims.ppm;
+        const m = 8 * u,
+          headH = 22 * u,
+          footH = 6 * u;
+        const fx = m,
+          fy = m + headH,
+          fw = dims.w - 2 * m,
+          fh = dims.h - fy - m - footH; // bingkai peta di halaman (mm)
+        const cw = Math.round(fw * ppm),
+          ch = Math.round(fh * ppm);
+        const band = Math.round(7 * u * ppm); // pita label koordinat
+        const mx = band,
+          my = band,
+          mw = cw - 2 * band,
+          mh = ch - 2 * band;
+        const PX = ppm * 0.2646 * u; // ukuran "1 px layar" di kanvas
+        const canvas = document.createElement("canvas");
+        canvas.width = cw;
+        canvas.height = ch;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, cw, ch);
+
+        // ---------- Proyeksi sesuai tampilan peta saat ini ----------
+        const areaMode = source === "area";
+        let z0 = map.getZoom(),
+          ctr = map.getCenter(),
+          ze,
+          areaPoly = null,
+          hsSource = displayedHotspots,
+          areaKm = 0;
+        if (areaMode) {
+          // peta difokuskan ke bounding box polygon; hotspot = semua hotspot (periode aktif) di dalam polygon
+          const lats = areaPoints.map((p) => p.lat),
+            lngs = areaPoints.map((p) => p.lng);
+          const nw = mpMercXY(Math.max(...lats), Math.min(...lngs), 0),
+            se = mpMercXY(Math.min(...lats), Math.max(...lngs), 0);
+          const dx = Math.max(se[0] - nw[0], 1e-9),
+            dy = Math.max(se[1] - nw[1], 1e-9);
+          ze = Math.max(
+            0,
+            Math.min(
+              19,
+              Math.log2(Math.min(mw / (dx * 1.14), mh / (dy * 1.14)))
+            )
+          );
+          const mid = mpInvXY((nw[0] + se[0]) / 2, (nw[1] + se[1]) / 2, 0);
+          ctr = L.latLng(mid[0], mid[1]);
+          z0 = Math.floor(ze + 1e-9);
+          const ring = areaPoints.map((p) => [p.lng, p.lat]);
+          ring.push(ring[0]);
+          areaPoly = turf.polygon([ring]);
+          areaKm = turf.area(areaPoly) / 1e6;
+          const bb = turf.bbox(areaPoly);
+          const feats =
+            hotspotGeoJSONData.features.features || hotspotGeoJSONData.features;
+          hsSource = feats.filter((h) => {
+            const conf = (h.properties.confidence_level || "").toLowerCase();
+            if (conf !== "high" && conf !== "medium") return false;
+            const c = h.geometry.coordinates;
+            if (c[0] < bb[0] || c[0] > bb[2] || c[1] < bb[1] || c[1] > bb[3])
+              return false;
+            return turf.booleanPointInPolygon(h, areaPoly);
+          });
+          if (!hsSource.length)
+            notes.push(
+              "Tidak ada hotspot di dalam area terpilih pada periode ini."
+            );
+        } else {
+          ze =
+            z0 +
+            Math.log2(Math.min(mw / map.getSize().x, mh / map.getSize().y));
+        }
+        const zt = Math.max(0, Math.min(19, Math.ceil(ze - 1e-9)));
+        const sc = Math.pow(2, ze - zt),
+          SZ = 256 * Math.pow(2, zt);
+        const c0 = mpMercXY(ctr.lat, ctr.lng, zt);
+        const ox = c0[0] - mw / 2 / sc,
+          oy = c0[1] - mh / 2 / sc;
+        const proj = (lat, lng) => {
+          const la =
+            (Math.max(-85.05112878, Math.min(85.05112878, lat)) * Math.PI) /
+            180;
+          const wx = ((lng + 180) / 360) * SZ,
+            wy =
+              (0.5 - Math.log(Math.tan(Math.PI / 4 + la / 2)) / (2 * Math.PI)) *
+              SZ;
+          return [(wx - ox) * sc + mx, (wy - oy) * sc + my];
+        };
+        const unproj = (px, py) =>
+          mpInvXY((px - mx) / sc + ox, (py - my) / sc + oy, zt); // -> [lat, lng]
+        const tl = unproj(mx, my),
+          br = unproj(mx + mw, my + mh);
+        const expBounds = L.latLngBounds([br[0], tl[1]], [tl[0], br[1]]);
+        const inFrame = (x, y) =>
+          x >= mx && x <= mx + mw && y >= my && y <= my + mh;
+
+        // ---------- Peta dasar (tile) ----------
+        let base = null,
+          satBase = true;
+        if (map.hasLayer(osm)) {
+          base = "osm";
+          satBase = false;
+        } else if (map.hasLayer(esriSatelit)) base = "esri";
+        else if (map.hasLayer(googleSatelit)) {
+          base = "esri";
+          notes.push(
+            "Peta dasar Google tidak bisa disimpan ke PDF (pembatasan browser), diganti Satelit Esri."
+          );
+        }
+        const baseName =
+          base === "osm"
+            ? "\u00A9 OpenStreetMap contributors"
+            : base === "esri"
+            ? "Esri, Maxar, Earthstar Geographics"
+            : "-";
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(mx, my, mw, mh);
+        ctx.clip();
+        ctx.fillStyle = satBase ? "#1b2a35" : "#e8ecee";
+        ctx.fillRect(mx, my, mw, mh);
+        if (base) {
+          const n = Math.pow(2, zt);
+          const tx0 = Math.floor(ox / 256),
+            tx1 = Math.floor((ox + mw / sc) / 256);
+          const ty0 = Math.max(0, Math.floor(oy / 256)),
+            ty1 = Math.min(n - 1, Math.floor((oy + mh / sc) / 256));
+          const jobs = [];
+          for (let ty = ty0; ty <= ty1; ty++)
+            for (let tx = tx0; tx <= tx1; tx++) {
+              const wx = ((tx % n) + n) % n;
+              const url =
+                base === "osm"
+                  ? `https://a.tile.openstreetmap.org/${zt}/${wx}/${ty}.png`
+                  : `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zt}/${ty}/${wx}`;
+              jobs.push(mpLoadImage(url).then((img) => ({ img, tx, ty })));
+            }
+          const tiles = await Promise.all(jobs);
+          let ok = 0;
+          tiles.forEach((t) => {
+            if (!t.img) return;
+            ok++;
+            ctx.drawImage(
+              t.img,
+              (t.tx * 256 - ox) * sc + mx,
+              (t.ty * 256 - oy) * sc + my,
+              256 * sc + 0.7,
+              256 * sc + 0.7
+            );
+          });
+          if (jobs.length && ok === 0)
+            notes.push("Peta dasar gagal dimuat (periksa koneksi internet).");
+          else if (ok < jobs.length)
+            notes.push(`${jobs.length - ok} tile peta dasar gagal dimuat.`);
+        }
+
+        // ---------- Grid koordinat ----------
+        const spanLng = br[1] - tl[1];
+        const step = mpPickStep(spanLng);
+        const gridLng = [],
+          gridLat = [];
+        if (withGrid) {
+          const r6 = (v) => Math.round(v * 1e6) / 1e6;
+          for (let k = Math.ceil(tl[1] / step); k * step <= br[1]; k++)
+            gridLng.push(r6(k * step));
+          for (let k = Math.ceil(br[0] / step); k * step <= tl[0]; k++)
+            gridLat.push(r6(k * step));
+          ctx.save();
+          ctx.lineWidth = PX * 0.9;
+          ctx.setLineDash([PX * 6, PX * 3]);
+          ctx.strokeStyle = satBase
+            ? "rgba(255,255,255,0.85)"
+            : "rgba(30,30,30,0.65)";
+          if (satBase) {
+            ctx.shadowColor = "rgba(0,0,0,0.9)";
+            ctx.shadowBlur = PX * 2;
+          }
+          ctx.beginPath();
+          gridLng.forEach((lng) => {
+            const x = proj(0, lng)[0];
+            ctx.moveTo(x, my);
+            ctx.lineTo(x, my + mh);
+          });
+          gridLat.forEach((lat) => {
+            const y = proj(lat, 0)[1];
+            ctx.moveTo(mx, y);
+            ctx.lineTo(mx + mw, y);
+          });
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // ---------- Batas kawasan ----------
+        if (map.hasLayer(kawasanLayer)) {
+          kawasanFeatures.forEach((item) => {
+            if (!item.layer.getBounds().intersects(expBounds)) return;
+            const g = item.geoJsonFeature && item.geoJsonFeature.geometry;
+            if (!g) return;
+            const polys =
+              g.type === "Polygon"
+                ? [g.coordinates]
+                : g.type === "MultiPolygon"
+                ? g.coordinates
+                : [];
+            const o = areaMode ? KAWASAN_STYLE : item.layer.options || {};
+            ctx.beginPath();
+            polys.forEach((poly) =>
+              poly.forEach((ring) => {
+                let lx = 0,
+                  ly = 0;
+                ring.forEach((c, i) => {
+                  const p = proj(c[1], c[0]);
+                  if (i === 0) {
+                    ctx.moveTo(p[0], p[1]);
+                    lx = p[0];
+                    ly = p[1];
+                  } else if (Math.abs(p[0] - lx) + Math.abs(p[1] - ly) >= 0.6) {
+                    ctx.lineTo(p[0], p[1]);
+                    lx = p[0];
+                    ly = p[1];
+                  }
+                });
+                ctx.closePath();
+              })
+            );
+            ctx.globalAlpha =
+              o.fillOpacity !== undefined ? o.fillOpacity : 0.05;
+            ctx.fillStyle = o.fillColor || o.color || "#8c38d1";
+            ctx.fill("evenodd");
+            ctx.globalAlpha = o.opacity !== undefined ? o.opacity : 0.9;
+            ctx.strokeStyle = o.color || "#8c38d1";
+            ctx.lineWidth = (o.weight || 2) * PX;
+            ctx.lineJoin = "round";
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          });
+        }
+
+        // ---------- Area terpilih: redupkan di luar polygon + garis tepi ----------
+        if (areaMode) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(mx, my, mw, mh);
+          areaPoints.forEach((p, i) => {
+            const q = proj(p.lat, p.lng);
+            if (i === 0) ctx.moveTo(q[0], q[1]);
+            else ctx.lineTo(q[0], q[1]);
+          });
+          ctx.closePath();
+          ctx.fillStyle = "rgba(0,0,0,0.38)";
+          ctx.fill("evenodd");
+          ctx.beginPath();
+          areaPoints.forEach((p, i) => {
+            const q = proj(p.lat, p.lng);
+            if (i === 0) ctx.moveTo(q[0], q[1]);
+            else ctx.lineTo(q[0], q[1]);
+          });
+          ctx.closePath();
+          ctx.lineJoin = "round";
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = 5 * PX;
+          ctx.stroke();
+          ctx.strokeStyle = "#00b8d4";
+          ctx.lineWidth = 2.6 * PX;
+          ctx.setLineDash([PX * 8, PX * 5]);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // ---------- Hotspot ----------
+        const showIn = map.hasLayer(hotspotDalamLayer),
+          showOut = map.hasLayer(hotspotLuarLayer);
+        const pts = [];
+        hsSource.forEach((h) => {
+          const inside = h._k >= 0;
+          if ((inside && !showIn) || (!inside && !showOut)) return;
+          const c = h.geometry.coordinates,
+            p = proj(c[1], c[0]);
+          if (!inFrame(p[0], p[1])) return;
+          pts.push({
+            h,
+            x: p[0],
+            y: p[1],
+            high:
+              (h.properties.confidence_level || "").toLowerCase() === "high",
+          });
+        });
+        pts.sort((a, b) => (a.high ? 1 : 0) - (b.high ? 1 : 0)); // High digambar paling atas
+        pts.forEach((pt) => {
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, (pt.high ? 5 : 3.6) * PX, 0, Math.PI * 2);
+          ctx.globalAlpha = 0.95;
+          ctx.fillStyle = pt.high ? "#FF0000" : "#FFFF00";
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = "#000";
+          ctx.lineWidth = PX;
+          ctx.stroke();
+        });
+        // penanda koordinat hasil pencarian
+        if (searchMarker) {
+          const ll = searchMarker.getLatLng(),
+            p = proj(ll.lat, ll.lng);
+          if (inFrame(p[0], p[1])) {
+            ctx.beginPath();
+            ctx.arc(p[0], p[1], 6 * PX, 0, Math.PI * 2);
+            ctx.fillStyle = "#2a81cb";
+            ctx.fill();
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2 * PX;
+            ctx.stroke();
+          }
+        }
+
+        // ---------- Label kawasan (sama seperti di layar: mulai zoom 9) ----------
+        if (map.hasLayer(labelKawasanGroup) && z0 >= MIN_ZOOM_LABEL) {
+          const viewPoly = turf.bboxPolygon([tl[1], br[0], br[1], tl[0]]);
+          const lfs = Math.max(8, 9 + (z0 - MIN_ZOOM_LABEL) * 1.1) * PX;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.lineJoin = "round";
+          ctx.font = `800 ${lfs}px ${MP_FONT}`;
+          kawasanFeatures.forEach((item) => {
+            if (!item.layer.getBounds().intersects(expBounds)) return;
+            try {
+              const inter = turf.intersect(item.geoJsonFeature, viewPoly);
+              const c = turf.pointOnFeature(inter || item.geoJsonFeature)
+                .geometry.coordinates;
+              const p = proj(c[1], c[0]);
+              if (!inFrame(p[0], p[1])) return;
+              const lines = mpWrap(ctx, item.name, lfs * 12);
+              lines.forEach((ln, i) => {
+                const yy = p[1] + (i - (lines.length - 1) / 2) * lfs * 1.15;
+                ctx.strokeStyle = "#fff";
+                ctx.lineWidth = lfs * 0.3;
+                ctx.strokeText(ln, p[0], yy);
+                ctx.fillStyle = "#00334e";
+                ctx.fillText(ln, p[0], yy);
+              });
+            } catch (e) {}
+          });
+          ctx.textAlign = "left";
+        }
+
+        // ---------- Kotak-kotak informasi: ringkasan, legenda, skala, panah utara ----------
+        const placed = []; // area yang sudah terpakai (agar popup tidak menimpa)
+        const fsB = 2.5 * u * ppm; // ukuran huruf dasar (px kanvas)
+        const gap = 3 * u * ppm;
+        ctx.textBaseline = "alphabetic";
+        ctx.textAlign = "left";
+
+        // Ringkasan (kiri bawah)
+        const sumTitle = areaMode
+          ? "Hotspot dalam Area Terpilih"
+          : document.getElementById("summary-title").innerText;
+        const cnt = (id) => document.getElementById(id).innerText;
+        let sumRows;
+        if (areaMode) {
+          let hi = 0,
+            me = 0,
+            inK = 0;
+          hsSource.forEach((h) => {
+            if ((h.properties.confidence_level || "").toLowerCase() === "high")
+              hi++;
+            else me++;
+            if (h._k >= 0) inK++;
+          });
+          sumRows = [
+            ["High", hi, "#e00000"],
+            ["Medium", me, "#d99b00"],
+            ["Total", hi + me, "#111"],
+            ["Di kawasan", inK, "#4a2a7a"],
+          ];
+        } else {
+          sumRows = [
+            ["High", cnt("cnt-high"), "#e00000"],
+            ["Medium", cnt("cnt-medium"), "#d99b00"],
+            ["Total", cnt("cnt-total"), "#111"],
+          ];
+        }
+        ctx.font = `700 ${fsB * 1.05}px ${MP_FONT}`;
+        const titleLines = mpWrap(ctx, sumTitle, 62 * u * ppm);
+        ctx.font = `400 ${fsB * 0.92}px ${MP_FONT}`;
+        const periodLines = mpWrap(
+          ctx,
+          "Periode: " + currentActiveDateRange,
+          62 * u * ppm
+        );
+        if (areaMode)
+          periodLines.push(`Luas area: \u00B1 ${areaFmtKm2(areaKm)} km\u00B2`);
+        const sLh = fsB * 1.45;
+        const sW = 64 * u * ppm,
+          sH =
+            sLh * (titleLines.length + periodLines.length + sumRows.length) +
+            fsB * 1.6;
+        const sX = mx + gap,
+          sY = my + mh - gap - sH;
+        ctx.fillStyle = "rgba(255,255,255,0.95)";
+        mpRoundRect(ctx, sX, sY, sW, sH, fsB * 0.5);
+        ctx.fill();
+        ctx.fillStyle = "#d9534f";
+        ctx.fillRect(sX, sY + fsB * 0.3, fsB * 0.5, sH - fsB * 0.6);
+        let ty = sY + fsB * 1.3;
+        const tx = sX + fsB * 1.2;
+        ctx.fillStyle = "#222";
+        ctx.font = `700 ${fsB * 1.05}px ${MP_FONT}`;
+        titleLines.forEach((l) => {
+          ctx.fillText(l, tx, ty);
+          ty += sLh;
+        });
+        ctx.font = `400 ${fsB * 0.92}px ${MP_FONT}`;
+        ctx.fillStyle = "#555";
+        periodLines.forEach((l) => {
+          ctx.fillText(l, tx, ty);
+          ty += sLh;
+        });
+        ty += fsB * 0.15;
+        sumRows.forEach(([lab, val, col]) => {
+          ctx.font = `700 ${fsB}px ${MP_FONT}`;
+          ctx.fillStyle = "#333";
+          ctx.fillText(lab, tx, ty);
+          ctx.fillText(":", tx + fsB * 7, ty);
+          ctx.fillStyle = col;
+          ctx.font = `800 ${fsB}px ${MP_FONT}`;
+          ctx.fillText(String(val), tx + fsB * 8.2, ty);
+          ty += sLh;
+        });
+        placed.push({ x: sX, y: sY, w: sW, h: sH });
+
+        // Legenda (kanan bawah)
+        const legItems = [
+          {
+            t: "High Confidence",
+            draw: (x, y) => {
+              ctx.beginPath();
+              ctx.arc(x, y, fsB * 0.55, 0, 7);
+              ctx.fillStyle = "#FF0000";
+              ctx.fill();
+              ctx.strokeStyle = "#000";
+              ctx.lineWidth = PX;
+              ctx.stroke();
+            },
+          },
+          {
+            t: "Medium Confidence",
+            draw: (x, y) => {
+              ctx.beginPath();
+              ctx.arc(x, y, fsB * 0.45, 0, 7);
+              ctx.fillStyle = "#FFFF00";
+              ctx.fill();
+              ctx.strokeStyle = "#000";
+              ctx.lineWidth = PX;
+              ctx.stroke();
+            },
+          },
+          {
+            t: "Batas Kawasan Konservasi",
+            draw: (x, y) => {
+              ctx.fillStyle = "rgba(140,56,209,0.12)";
+              ctx.fillRect(x - fsB * 0.7, y - fsB * 0.45, fsB * 1.4, fsB * 0.9);
+              ctx.strokeStyle = "#8c38d1";
+              ctx.lineWidth = 2 * PX;
+              ctx.strokeRect(
+                x - fsB * 0.7,
+                y - fsB * 0.45,
+                fsB * 1.4,
+                fsB * 0.9
+              );
+            },
+          },
+        ];
+        if (areaMode)
+          legItems.push({
+            t: "Area Terpilih (Polygon)",
+            draw: (x, y) => {
+              ctx.fillStyle = "rgba(0,184,212,0.2)";
+              ctx.fillRect(x - fsB * 0.7, y - fsB * 0.45, fsB * 1.4, fsB * 0.9);
+              ctx.save();
+              ctx.setLineDash([PX * 4, PX * 2]);
+              ctx.strokeStyle = "#00b8d4";
+              ctx.lineWidth = 2.5 * PX;
+              ctx.strokeRect(
+                x - fsB * 0.7,
+                y - fsB * 0.45,
+                fsB * 1.4,
+                fsB * 0.9
+              );
+              ctx.restore();
+            },
+          });
+        else if (activeKawasanIdx !== null || activeUpt !== null)
+          legItems.push({
+            t: "Kawasan Terpilih (Filter)",
+            draw: (x, y) => {
+              ctx.fillStyle = "rgba(255,152,0,0.25)";
+              ctx.fillRect(x - fsB * 0.7, y - fsB * 0.45, fsB * 1.4, fsB * 0.9);
+              ctx.strokeStyle = "#ff9800";
+              ctx.lineWidth = 3 * PX;
+              ctx.strokeRect(
+                x - fsB * 0.7,
+                y - fsB * 0.45,
+                fsB * 1.4,
+                fsB * 0.9
+              );
+            },
+          });
+        if (withGrid)
+          legItems.push({
+            t: "Grid Koordinat (derajat, WGS 84)",
+            draw: (x, y) => {
+              ctx.save();
+              ctx.setLineDash([PX * 4, PX * 2]);
+              ctx.strokeStyle = "#555";
+              ctx.lineWidth = PX;
+              ctx.beginPath();
+              ctx.moveTo(x - fsB * 0.7, y);
+              ctx.lineTo(x + fsB * 0.7, y);
+              ctx.stroke();
+              ctx.restore();
+            },
+          });
+        ctx.font = `400 ${fsB}px ${MP_FONT}`;
+        const lgW =
+          Math.max(...legItems.map((i) => ctx.measureText(i.t).width)) +
+          fsB * 4.2;
+        const lgLh = fsB * 1.7,
+          lgH = lgLh * legItems.length + fsB * 2.6;
+        const lgX = mx + mw - gap - lgW,
+          lgY = my + mh - gap - lgH;
+        ctx.fillStyle = "rgba(255,255,255,0.95)";
+        mpRoundRect(ctx, lgX, lgY, lgW, lgH, fsB * 0.5);
+        ctx.fill();
+        ctx.fillStyle = "#222";
+        ctx.font = `700 ${fsB * 1.1}px ${MP_FONT}`;
+        ctx.fillText("Legenda", lgX + fsB, lgY + fsB * 1.6);
+        legItems.forEach((it, i) => {
+          const yy = lgY + fsB * 2.2 + lgLh * (i + 0.55);
+          it.draw(lgX + fsB * 1.8, yy - fsB * 0.3);
+          ctx.fillStyle = "#222";
+          ctx.font = `400 ${fsB}px ${MP_FONT}`;
+          ctx.fillText(it.t, lgX + fsB * 3.4, yy);
+        });
+        placed.push({ x: lgX, y: lgY, w: lgW, h: lgH });
+
+        // Skala batang (di kanan ringkasan)
+        const mpp =
+          (156543.03392 * Math.cos((ctr.lat * Math.PI) / 180)) /
+          Math.pow(2, zt) /
+          sc; // meter per px kanvas
+        const rawM = mpp * 35 * ppm * u,
+          pw = Math.pow(10, Math.floor(Math.log10(rawM)));
+        const niceM = rawM / pw >= 5 ? 5 * pw : rawM / pw >= 2 ? 2 * pw : pw;
+        const barW = niceM / mpp,
+          bX = sX + sW + gap,
+          bY = my + mh - gap - fsB * 1.2,
+          bH = fsB * 0.55;
+        const fmtM = (v) => (v >= 1000 ? v / 1000 + " km" : v + " m");
+        ctx.fillStyle = "rgba(255,255,255,0.92)";
+        mpRoundRect(
+          ctx,
+          bX - fsB * 0.6,
+          bY - fsB * 3.3,
+          barW + fsB * 5.2,
+          fsB * 4.9,
+          fsB * 0.5
+        );
+        ctx.fill();
+        for (let i = 0; i < 2; i++) {
+          ctx.fillStyle = i ? "#fff" : "#111";
+          ctx.fillRect(bX + (i * barW) / 2, bY - bH, barW / 2, bH);
+        }
+        ctx.strokeStyle = "#111";
+        ctx.lineWidth = PX;
+        ctx.strokeRect(bX, bY - bH, barW, bH);
+        ctx.fillStyle = "#111";
+        ctx.font = `400 ${fsB * 0.9}px ${MP_FONT}`;
+        ctx.textAlign = "center";
+        ctx.fillText("0", bX, bY + fsB * 1.1);
+        ctx.fillText(fmtM(niceM / 2), bX + barW / 2, bY + fsB * 1.1);
+        ctx.fillText(fmtM(niceM), bX + barW, bY + fsB * 1.1);
+        ctx.textAlign = "left";
+        ctx.font = `600 ${fsB * 0.9}px ${MP_FONT}`;
+        ctx.fillText(
+          "Skala \u00B1 1 : " +
+            Math.round(mpp * ppm * 1000).toLocaleString("id-ID"),
+          bX,
+          bY - bH - fsB * 0.9
+        );
+        ctx.font = `400 ${fsB * 0.9}px ${MP_FONT}`;
+        placed.push({
+          x: bX - fsB * 0.6,
+          y: bY - fsB * 3.3,
+          w: barW + fsB * 5.2,
+          h: fsB * 4.9,
+        });
+
+        // Panah utara (kanan atas)
+        const naX = mx + mw - gap - fsB * 2.2,
+          naY = my + gap + fsB * 5.5;
+        ctx.fillStyle = "rgba(255,255,255,0.92)";
+        ctx.beginPath();
+        ctx.arc(naX, naY - fsB * 1.2, fsB * 3.2, 0, 7);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(naX, naY - fsB * 3.6);
+        ctx.lineTo(naX + fsB * 1.1, naY + fsB * 0.7);
+        ctx.lineTo(naX, naY - fsB * 0.2);
+        ctx.closePath();
+        ctx.fillStyle = "#111";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(naX, naY - fsB * 3.6);
+        ctx.lineTo(naX - fsB * 1.1, naY + fsB * 0.7);
+        ctx.lineTo(naX, naY - fsB * 0.2);
+        ctx.closePath();
+        ctx.fillStyle = "#fff";
+        ctx.fill();
+        ctx.strokeStyle = "#111";
+        ctx.lineWidth = PX;
+        ctx.stroke();
+        ctx.fillStyle = "#111";
+        ctx.font = `800 ${fsB * 1.1}px ${MP_FONT}`;
+        ctx.textAlign = "center";
+        ctx.fillText("U", naX, naY - fsB * 4.1);
+        ctx.textAlign = "left";
+        placed.push({
+          x: naX - fsB * 3.2,
+          y: naY - fsB * 4.4,
+          w: fsB * 6.4,
+          h: fsB * 6.4,
+        });
+
+        // ---------- Popup ----------
+        const popFs = (allPopups ? 2.1 : 2.5) * u * ppm,
+          popMaxW = (allPopups ? 52 : 72) * u * ppm;
+        let skipped = 0;
+        function placeAndDraw(model, ax, ay, openStyle) {
+          const lay = mpLayoutPopup(ctx, model, popFs, popMaxW);
+          const g = popFs * 0.9,
+            W = lay.w,
+            H = lay.h;
+          const cands = [];
+          (openStyle ? [1] : [1, 1.8, 2.8, 4.2]).forEach((mu) => {
+            const d = g * mu;
+            cands.push(
+              { k: "above", x: ax - W / 2, y: ay - d - H },
+              { k: "below", x: ax - W / 2, y: ay + d },
+              { k: "right", x: ax + d, y: ay - H / 2 },
+              { k: "left", x: ax - d - W, y: ay - H / 2 },
+              { k: "ne", x: ax + d, y: ay - d - H },
+              { k: "nw", x: ax - d - W, y: ay - d - H },
+              { k: "se", x: ax + d, y: ay + d },
+              { k: "sw", x: ax - d - W, y: ay + d }
+            );
+          });
+          let best = null;
+          cands.forEach((c, idx) => {
+            const x = Math.min(Math.max(c.x, mx + 2), mx + mw - W - 2),
+              y = Math.min(Math.max(c.y, my + 2), my + mh - H - 2);
+            const clamped = Math.abs(x - c.x) > 0.5 || Math.abs(y - c.y) > 0.5;
+            let cost = (clamped ? 40 : 0) + idx * 0.5;
+            placed.forEach((r) => {
+              if (x < r.x + r.w && x + W > r.x && y < r.y + r.h && y + H > r.y)
+                cost += 1000;
+            });
+            if (!openStyle)
+              pts.forEach((p) => {
+                if (
+                  p.x >= x - 4 &&
+                  p.x <= x + W + 4 &&
+                  p.y >= y - 4 &&
+                  p.y <= y + H + 4 &&
+                  (Math.abs(p.x - ax) > 1 || Math.abs(p.y - ay) > 1)
+                )
+                  cost += 3;
+              });
+            if (!best || cost < best.cost)
+              best = { x, y, k: c.k, clamped, cost };
+          });
+          if (!openStyle && best.cost >= 1000) {
+            skipped++;
+            return;
+          }
+          // penghubung ke titik hotspot
+          ctx.save();
+          if (best.k === "above" && !best.clamped) {
+            ctx.shadowColor = "rgba(0,0,0,0.3)";
+            ctx.shadowBlur = PX * 3;
+            ctx.beginPath();
+            ctx.moveTo(ax - popFs * 0.7, best.y + H - 1);
+            ctx.lineTo(ax + popFs * 0.7, best.y + H - 1);
+            ctx.lineTo(ax, ay - PX * 1.5);
+            ctx.closePath();
+            ctx.fillStyle = "#fff";
+            ctx.fill();
+          } else {
+            const nx = Math.min(Math.max(ax, best.x), best.x + W),
+              ny = Math.min(Math.max(ay, best.y), best.y + H);
+            ctx.strokeStyle = "#222";
+            ctx.lineWidth = PX * 1.1;
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(nx, ny);
+            ctx.stroke();
+          }
+          ctx.restore();
+          mpDrawPopup(ctx, model, lay, best.x, best.y, PX);
+          placed.push({ x: best.x, y: best.y, w: W, h: H });
+        }
+
+        let openHs = null;
+        if (openPopupRef && openPopupRef.getLatLng) {
+          const ll = openPopupRef.getLatLng(),
+            model = mpPopupModelFromDom(openPopupRef);
+          if (ll && model) {
+            const p = proj(ll.lat, ll.lng);
+            if (inFrame(p[0], p[1])) {
+              placeAndDraw(model, p[0], p[1], true);
+              openHs = ll;
+            }
+          }
+        }
+        if (allPopups) {
+          const cand = pts.filter((pt) => {
+            if (!openHs) return true;
+            const c = pt.h.geometry.coordinates;
+            return !(
+              Math.abs(openHs.lat - c[1]) < 1e-7 &&
+              Math.abs(openHs.lng - c[0]) < 1e-7
+            );
+          });
+          if (cand.length > MP_MAX_ALL_POPUPS) {
+            notes.push(
+              `Popup semua hotspot dilewati: ada ${cand.length} hotspot di area peta (maks. ${MP_MAX_ALL_POPUPS}). Persempit filter/zoom peta.`
+            );
+          } else {
+            cand
+              .sort((a, b) => a.y - b.y)
+              .forEach((pt) =>
+                placeAndDraw(mpHotspotModel(pt.h), pt.x, pt.y, false)
+              );
+            if (skipped)
+              notes.push(`${skipped} popup tidak muat di peta dan dilewati.`);
+          }
+        }
+        ctx.restore(); // akhir clip area peta
+
+        // ---------- Bingkai & label koordinat di tepi ----------
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 0.35 * u * ppm;
+        ctx.strokeRect(mx, my, mw, mh);
+        ctx.strokeStyle = "#666";
+        ctx.lineWidth = 0.15 * u * ppm;
+        ctx.strokeRect(1, 1, cw - 2, ch - 2);
+        if (withGrid) {
+          const lfs = 2.2 * u * ppm,
+            tick = 1.3 * u * ppm;
+          ctx.fillStyle = "#111";
+          ctx.strokeStyle = "#000";
+          ctx.lineWidth = 0.2 * u * ppm;
+          ctx.font = `600 ${lfs}px ${MP_FONT}`;
+          ctx.textAlign = "center";
+          gridLng.forEach((lng) => {
+            const x = proj(0, lng)[0],
+              t = mpFmtCoord(lng, step, false);
+            ctx.beginPath();
+            ctx.moveTo(x, my);
+            ctx.lineTo(x, my - tick);
+            ctx.moveTo(x, my + mh);
+            ctx.lineTo(x, my + mh + tick);
+            ctx.stroke();
+            ctx.textBaseline = "bottom";
+            ctx.fillText(t, x, my - tick - lfs * 0.25);
+            ctx.textBaseline = "top";
+            ctx.fillText(t, x, my + mh + tick + lfs * 0.25);
+          });
+          gridLat.forEach((lat) => {
+            const y = proj(lat, 0)[1],
+              t = mpFmtCoord(lat, step, true);
+            ctx.beginPath();
+            ctx.moveTo(mx, y);
+            ctx.lineTo(mx - tick, y);
+            ctx.moveTo(mx + mw, y);
+            ctx.lineTo(mx + mw + tick, y);
+            ctx.stroke();
+            ctx.save();
+            ctx.translate(mx - tick - lfs * 0.25, y);
+            ctx.rotate(-Math.PI / 2);
+            ctx.textBaseline = "bottom";
+            ctx.fillText(t, 0, 0);
+            ctx.restore();
+            ctx.save();
+            ctx.translate(mx + mw + tick + lfs * 0.25, y);
+            ctx.rotate(Math.PI / 2);
+            ctx.textBaseline = "bottom";
+            ctx.fillText(t, 0, 0);
+            ctx.restore();
+          });
+          ctx.textAlign = "left";
+        }
+
+        // ---------- Susun PDF ----------
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+          orientation: "landscape",
+          unit: "mm",
+          format: paper,
+        });
+        const pageW = doc.internal.pageSize.getWidth(),
+          pageH = doc.internal.pageSize.getHeight();
+        doc.setProperties({
+          title: "Peta Hotspot Hutan Konservasi",
+          subject: "Monitoring Hotspot SIPONGI",
+        });
+
+        // Logo
+        let textX = m;
+        const logoH = 14 * u;
+        document.querySelectorAll(".map-title-logo").forEach((img) => {
+          const lg = mpLogoData(img, 240);
+          if (!lg) return;
+          const lw = logoH * lg.ratio;
+          try {
+            doc.addImage(lg.data, "PNG", textX, m, lw, logoH);
+            textX += lw + 2 * u;
+          } catch (e) {}
+        });
+        if (textX > m) textX += 2 * u;
+
+        const now = new Date();
+        const waktuCetak =
+          now.toLocaleDateString("id-ID", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+            timeZone: "Asia/Jakarta",
+          }) +
+          " | " +
+          now
+            .toLocaleTimeString("id-ID", {
+              hour12: false,
+              timeZone: "Asia/Jakarta",
+            })
+            .replace(/\./g, ":") +
+          " WIB";
+        doc.setTextColor(0, 51, 78);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(15 * u);
+        doc.text("HOTSPOT HUTAN KONSERVASI", textX, m + 5.5 * u);
+        doc.setTextColor(40);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8 * u);
+        const descTxt = areaMode
+          ? `Mode: Area terpilih (polygon ${
+              areaPoints.length
+            } titik, \u00B1 ${areaFmtKm2(
+              areaKm
+            )} km2)  |  Periode: ${currentActiveDateRange}  |  Total: ${
+              hsSource.length
+            } hotspot`
+          : activeFilterDescription();
+        const descLines = doc
+          .splitTextToSize(descTxt, pageW - textX - m)
+          .slice(0, 2);
+        doc.text(descLines, textX, m + 10 * u);
+        doc.setTextColor(150, 30, 30);
+        doc.setFont("helvetica", "bold");
+        doc.text(
+          "Diproses : " + waktuCetak,
+          textX,
+          m + 10 * u + descLines.length * 3.6 * u + 0.5 * u
+        );
+
+        // Gambar peta
+        doc.addImage(
+          canvas.toDataURL("image/jpeg", 0.92),
+          "JPEG",
+          fx,
+          fy,
+          fw,
+          fh,
+          undefined,
+          "FAST"
+        );
+
+        // Footer
+        doc.setTextColor(110);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7 * u);
+        const fyT = fy + fh + 4 * u;
+        doc.text(
+          "Monitoring Hotspot SIPONGI - Kawasan Hutan Konservasi",
+          fx,
+          fyT
+        );
+        doc.text(
+          "Peta dasar: " +
+            baseName +
+            "  |  Koordinat: derajat desimal WGS 84, proyeksi Web Mercator (EPSG:3857) - GeoPDF",
+          pageW / 2,
+          fyT,
+          { align: "center" }
+        );
+        doc.text("Halaman 1", pageW - m, fyT, { align: "right" });
+
+        const stamp = toWIBDate(new Date());
+        let nm = "hotspot";
+        if (areaMode) nm = "area_terpilih";
+        else if (activeKawasanIdx !== null)
+          nm = kawasanFeatures[activeKawasanIdx].name;
+        else if (activeUpt !== null) nm = activeUpt;
+        nm =
+          nm
+            .replace(/[^\w\-]+/g, "_")
+            .replace(/^_+|_+$/g, "")
+            .substring(0, 50) || "hotspot";
+        // ---- Georeferensi: BBox = bingkai peta bagian dalam (di luar pita label koordinat) ----
+        const k2pt = 72 / 25.4;
+        const sxm = fw / cw, sym = fh / ch; // mm per piksel kanvas
+        const bx1 = (fx + mx * sxm) * k2pt,
+          bx2 = (fx + (mx + mw) * sxm) * k2pt,
+          by_top = (pageH - (fy + my * sym)) * k2pt,
+          by_bot = (pageH - (fy + (my + mh) * sym)) * k2pt;
+        const fileName = `peta_${nm}_${stamp}.pdf`;
+        try {
+          const geoBytes = mpGeoreferencePdf(doc.output("arraybuffer"), {
+            bbox: [bx1, by_bot, bx2, by_top],
+            north: tl[0],
+            west: tl[1],
+            south: br[0],
+            east: br[1],
+          });
+          const blob = new Blob([geoBytes], { type: "application/pdf" });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            URL.revokeObjectURL(a.href);
+            a.remove();
+          }, 1500);
+        } catch (e) {
+          console.error("Georeferensi PDF gagal, menyimpan PDF biasa:", e);
+          notes.push("Georeferensi gagal, PDF disimpan tanpa referensi spasial.");
+          doc.save(fileName);
+        }
+        return notes.length
+          ? "PDF peta tersimpan. Catatan: " + notes.join(" ")
+          : "Berhasil mengekspor peta ke PDF";
+      }
+
+      let uptTomSelectInstance = null;
+
+      function populateUptDropdown() {
+        const s = document.getElementById("select-upt"),
+          set = new Set();
+        kawasanFeatures.forEach((k) => {
+          if (k.upt && k.upt !== "-") set.add(k.upt);
+        });
+
+        // Kosongkan option awal
+        s.innerHTML = '<option value="">-- Ketik atau Pilih UPT --</option>';
+        Array.from(set)
+          .sort()
+          .forEach(
+            (u) => (s.innerHTML += `<option value="${u}">${u}</option>`)
+          );
+
+        // Inisialisasi atau perbarui Tom Select agar bisa diketik/dicari
+        if (uptTomSelectInstance) {
+          uptTomSelectInstance.destroy(); // Hancurkan instance lama jika ada pembaruan data
+        }
+
+        uptTomSelectInstance = new TomSelect("#select-upt", {
+          create: false,
+          sortField: {
+            field: "text",
+            direction: "asc",
+          },
+          placeholder: "Ketik nama UPT...",
+          onChange: function (value) {
+            updateWeeklyChart(); // Panggil fungsi saat UPT dipilih
+          },
+        });
+      }
+
+      function renderChartsData() {
+        renderHighestChart();
+        renderWeeklyChart();
+      }
+
+      function renderHighestChart() {
+        const d = [...kawasanFeatures]
+          .map((k) => ({
+            n: k.name,
+            h: k.highCount,
+            m: k.mediumCount,
+            t: k.highCount + k.mediumCount,
+          }))
+          .filter((k) => k.t > 0)
+          .sort((a, b) => b.t - a.t)
+          .slice(0, 10);
+        if (chartHighestInstance) chartHighestInstance.destroy();
+        chartHighestInstance = new Chart(
+          document.getElementById("chartHighestNKWS").getContext("2d"),
+          {
+            type: "bar",
+            data: {
+              labels: d.map((k) => k.n),
+              datasets: [
+                {
+                  label: "Medium Confidence",
+                  data: d.map((k) => k.m),
+                  backgroundColor: "#ffa500",
+                },
+                {
+                  label: "High Confidence",
+                  data: d.map((k) => k.h),
+                  backgroundColor: "#ff4d4d",
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                x: { stacked: true },
+                y: { stacked: true, beginAtZero: true },
+              },
+            },
+          }
+        );
+      }
+
+      function renderWeeklyChart() {
+        const upt = document.getElementById("select-upt").value;
+        const ctx = document.getElementById("chartWeeklyUpt").getContext("2d");
+        if (chartWeeklyInstance) chartWeeklyInstance.destroy();
+
+        if (!upt) {
+          chartWeeklyInstance = new Chart(ctx, {
+            type: "line",
+            data: { labels: [], datasets: [] },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                title: {
+                  display: true,
+                  text: "Pilih UPT di atas terlebih dahulu.",
+                },
+              },
+            },
+          });
+          return;
+        }
+
+        const dates = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date();
+          d.setDate(d.getDate() - (6 - i));
+          return toWIBDate(d);
+        });
+        const filtered = weeklyHotspotRawList.filter((h) => h.upt === upt);
+        const nkwsList = [...new Set(filtered.map((h) => h.nkws))];
+        const colors = [
+          "#d9534f",
+          "#0275d8",
+          "#f0ad4e",
+          "#5cb85c",
+          "#8c38d1",
+          "#e67e22",
+          "#1abc9c",
+          "#e74c3c",
+        ];
+
+        const datasets = nkwsList.map((nkws, idx) => ({
+          label: nkws,
+          data: dates.map(
+            (dt) =>
+              filtered.filter((h) => h.nkws === nkws && h.date === dt).length
+          ),
+          borderColor: colors[idx % colors.length],
+          backgroundColor: colors[idx % colors.length],
+          borderWidth: 2,
+          fill: false,
+          tension: 0.1,
+        }));
+
+        chartWeeklyInstance = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: dates.map((d) =>
+              new Date(d).toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "short",
+              })
+            ),
+            datasets: datasets,
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+          },
+        });
+      }
+
+      function updateWeeklyChart() {
+        renderWeeklyChart();
+      }
+
+      function loadWeeklyHotspotDataForCharts() {
+        const today = new Date();
+        const pastWeek = new Date();
+        pastWeek.setDate(today.getDate() - 7);
+
+        const dateTo = toWIBDate(today);
+        const dateFrom = toWIBDate(pastWeek);
+
+        const weeklyApiUrl = `https://opsroom.sipongidata.my.id/api/opsroom/indoHotspot?wilayah=IN&filterperiode=true&from=${dateFrom}&to=${dateTo}&late=custom&satelit[]=NASA-MODIS&satelit[]=NASA-SNPP&satelit[]=NASA-NOAA20&confidence[]=low&confidence[]=medium&confidence[]=high&provinsi=&kabkota=`;
+
+        fetch(weeklyApiUrl)
+          .then((r) => r.json())
+          .then((data) => {
+            const features = data.features
+              ? data.features.features || data.features
+              : [];
+            weeklyHotspotRawList = [];
+
+            const kawasanBbox = kawasanGeoJSONData.features.map((f, i) => ({
+              feature: f,
+              bbox: turf.bbox(f),
+              i: i,
+            }));
+
+            features.forEach((hotspot) => {
+              const conf = (
+                hotspot.properties.confidence_level || ""
+              ).toLowerCase();
+              if (conf !== "high" && conf !== "medium") return;
+
+              const p = hotspot.properties;
+              const dateStr = hsDateWIB(p.hs_id);
+              if (!dateStr) return;
+
+              if (dateStr >= dateFrom && dateStr <= dateTo) {
+                const pt = hotspot.geometry.coordinates;
+                for (let k of kawasanBbox) {
+                  if (
+                    pt[0] >= k.bbox[0] &&
+                    pt[0] <= k.bbox[2] &&
+                    pt[1] >= k.bbox[1] &&
+                    pt[1] <= k.bbox[3]
+                  ) {
+                    try {
+                      if (turf.booleanPointInPolygon(hotspot, k.feature)) {
+                        const kItem = kawasanFeatures[k.i];
+                        weeklyHotspotRawList.push({
+                          nkws: kItem.name,
+                          upt: kItem.upt,
+                          date: dateStr,
+                        });
+                        break;
+                      }
+                    } catch (e) {}
+                  }
+                }
+              }
+            });
+            renderWeeklyChart();
+          })
+          .catch((e) => console.error("Gagal memuat data weekly chart:", e));
+      }
+
+      let kawasanFailed = false;
+      // Muat kawasan: lewat fetch (server/hosting). Jika gagal (mis. dibuka langsung via file://), pakai kawasan.js
+      function loadKawasanData() {
+        return fetch("kawasan.geojson")
+          .then((r) => {
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            return r.json();
+          })
+          .catch(
+            () =>
+              new Promise((resolve, reject) => {
+                const sc = document.createElement("script");
+                sc.src = "kawasan.js";
+                sc.onload = () =>
+                  window.KAWASAN_DATA
+                    ? resolve(window.KAWASAN_DATA)
+                    : reject(new Error("KAWASAN_DATA kosong"));
+                sc.onerror = () =>
+                  reject(new Error("kawasan.js tidak ditemukan"));
+                document.head.appendChild(sc);
+              })
+          );
+      }
+      loadKawasanData()
+        .then((data) => {
+          kawasanGeoJSONData = data;
+          const l = L.geoJSON(data, {
+            style: {
+              color: "#8c38d1",
+              weight: 2,
+              opacity: 0.9,
+              fillColor: "#8c38d1",
+              fillOpacity: 0.05,
+            },
+            onEachFeature: (f, layer) => {
+              if (f.properties)
+                kawasanFeatures.push({
+                  name: f.properties.NKWS || f.properties.nama || "Kawasan",
+                  upt: f.properties.NUPT || f.properties.upt || "-",
+                  layer: layer,
+                  geoJsonFeature: f,
+                  highCount: 0,
+                  mediumCount: 0,
+                  minDate: null,
+                  maxDate: null,
+                });
+            },
+          });
+          kawasanLayer.addLayer(l);
+          isKawasanLoaded = true;
+          populateKawasanDropdown();
+          checkAllDataLoaded();
+
+          loadWeeklyHotspotDataForCharts();
+          if (hotspotGeoJSONData) processHotspotLayers();
+        })
+        .catch((e) => {
+          console.error(e);
+          kawasanFailed = true;
+          hideLoading();
+          showToast(
+            "Gagal memuat data kawasan. Pastikan kawasan.geojson / kawasan.js ada satu folder dengan index.html.",
+            true
+          );
+        });
+
+      function loadHotspotData(url, fFrom = null) {
+        document.getElementById("cnt-total").innerText = "...";
+        fetch(url)
+          .then((r) => r.json())
+          .then((d) => {
+            if (fFrom && d.features) {
+              const toStr = currentActiveDateRange.split(" s/d ")[1];
+              d.features = (d.features.features || d.features).filter((f) => {
+                const hd = hsDateWIB(f.properties.hs_id); // tanggal WIB, bukan tanggal UTC
+                return hd !== null && hd >= fFrom && hd <= toStr;
+              });
+            }
+            hotspotGeoJSONData = d;
+            processHotspotLayers(fFrom);
+          })
+          .catch((e) => {
+            console.error(e);
+            hideLoading();
+            showToast("Gagal memuat data hotspot. Coba lagi.", true);
+          });
+      }
+
+      initWilayahCombos();
+      showLoading("Memuat data kawasan & hotspot...");
+      loadHotspotData(DEFAULT_HOTSPOT_URL);
+
+      const legend = L.control({ position: "bottomright" });
+      legend.onAdd = () => {
+        const div = L.DomUtil.create("div", "legend");
+        div.innerHTML = `<h4>Legenda</h4><i style="background: #FF0000; border-radius: 50%;"></i> High Confidence<br><i style="background: #FFFF00; border-radius: 50%;"></i> Medium Confidence<br><i style="border: 2px solid #8c38d1; background: rgba(140,56,209,0.15);"></i> Batas Kawasan`;
+        return div;
+      };
+      legend.addTo(map);
+
+      L.control
+        .layers(
+          {
+            OpenStreetMap: osm,
+            "Satelit (Esri)": esriSatelit,
+            "Satelit (Google)": googleSatelit,
+          },
+          {
+            "Hotspot Dalam": hotspotDalamLayer,
+            "Hotspot Luar": hotspotLuarLayer,
+            "Batas Kawasan": kawasanLayer,
+            Label: labelKawasanGroup,
+          },
+          { collapsed: false }
+        )
+        .addTo(map);
+    </script>
+  </body>
+</html>
